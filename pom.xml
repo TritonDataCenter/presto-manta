@@ -65,6 +65,7 @@
         <dependency.checkstyle.version>6.17</dependency.checkstyle.version>
         <dependency.java-manta.version>3.1.6</dependency.java-manta.version>
         <dependency.presto.version>0.184</dependency.presto.version>
+        <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
         <dependency.mockito.version>2.0.2-beta</dependency.mockito.version>
 
@@ -107,6 +108,13 @@
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-spi</artifactId>
             <version>${dependency.presto.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>bootstrap</artifactId>
+            <version>${dependency.airlift.version}</version>
             <scope>provided</scope>
         </dependency>
 
