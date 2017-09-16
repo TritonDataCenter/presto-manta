@@ -15,8 +15,9 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.transaction.IsolationLevel;
 import com.joyent.manta.client.MantaClient;
 import io.airlift.bootstrap.LifeCycleManager;
-import io.airlift.log.Logger;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -24,10 +25,14 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Manta specific implementation of {@link Connector} that acts to provide a
- * means to connect to Manta within the Presto API.
+ * means to connect to Manta within the Presto API. This class must be shutdown
+ * when it is no longer in use.
  */
 public class MantaPrestoConnector implements Connector {
-    private static final Logger log = Logger.get(MantaPrestoConnector.class);
+    /**
+     * Logger instance.
+     */
+    private static final Logger log = LoggerFactory.getLogger(MantaPrestoConnector.class);
 
     private final LifeCycleManager lifeCycleManager;
     private final MantaPrestoMetadata metadata;
@@ -76,7 +81,7 @@ public class MantaPrestoConnector implements Connector {
         try {
             lifeCycleManager.stop();
         } catch (Exception e) {
-            log.error(e, "Error shutting down Manta Presto connector");
+            log.error("Error shutting down Manta Presto connector", e);
         }
     }
 

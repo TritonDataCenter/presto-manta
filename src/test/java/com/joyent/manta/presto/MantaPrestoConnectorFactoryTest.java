@@ -7,9 +7,11 @@
  */
 package com.joyent.manta.presto;
 
+import com.facebook.presto.spi.connector.Connector;
 import com.facebook.presto.spi.connector.ConnectorContext;
 import com.facebook.presto.spi.type.TypeManager;
 import com.google.common.collect.ImmutableMap;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Map;
@@ -64,6 +66,9 @@ public class MantaPrestoConnectorFactoryTest {
         when(context.getTypeManager()).thenReturn(typeManager);
 
         MantaPrestoConnectorFactory connectorFactory = new MantaPrestoConnectorFactory();
-        connectorFactory.create(connectorId, config, context);
+        Connector connector = connectorFactory.create(connectorId, config, context);
+        Assert.assertNotNull(connector);
+
+        connector.shutdown();
     }
 }

@@ -50,7 +50,7 @@
     </distributionManagement>
 
     <properties>
-        <checkstyle.skip>false</checkstyle.skip>
+        <checkstyle.skip>true</checkstyle.skip>
         <maven.test.skip>false</maven.test.skip>
         <maven.integration.test.skip>false</maven.integration.test.skip>
         <java.min.version>1.8</java.min.version>
@@ -65,6 +65,7 @@
         <dependency.checkstyle.version>6.17</dependency.checkstyle.version>
         <dependency.java-manta.version>3.1.6</dependency.java-manta.version>
         <dependency.presto.version>0.184</dependency.presto.version>
+        <dependency.slfj.version>1.7.21</dependency.slfj.version>
         <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
         <dependency.mockito.version>2.0.2-beta</dependency.mockito.version>
@@ -125,6 +126,13 @@
             <optional>true</optional>
         </dependency>
 
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${dependency.slfj.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test Dependencies -->
 
         <dependency>
@@ -144,6 +152,13 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
             <version>${dependency.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>${dependency.slfj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -175,6 +190,25 @@
                         <goals>
                             <goal>check</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>add-test-source</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/integration/java</source>
+                            </sources>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -267,7 +301,24 @@
                     <includes>
                         <include>**/*IT.java</include>
                     </includes>
+                    <systemProperties>
+                        <java.util.logging.config.file>${project.build.testOutputDirectory}/logging.properties</java.util.logging.config.file>
+                    </systemProperties>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -324,6 +375,9 @@
                     <systemPropertyVariables>
                     </systemPropertyVariables>
                     <useSystemClassLoader>${surefire.useSystemClassLoader}</useSystemClassLoader>
+                    <systemProperties>
+                        <java.util.logging.config.file>${project.build.testOutputDirectory}/logging.properties</java.util.logging.config.file>
+                    </systemProperties>
                 </configuration>
             </plugin>
             <plugin>

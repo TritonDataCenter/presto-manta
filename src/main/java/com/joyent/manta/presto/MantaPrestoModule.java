@@ -18,27 +18,25 @@ import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-
-import static java.util.Objects.requireNonNull;
 
 import static io.airlift.json.JsonBinder.jsonBinder;
 import static io.airlift.json.JsonCodec.listJsonCodec;
 import static io.airlift.json.JsonCodecBinder.jsonCodecBinder;
+import static java.util.Objects.requireNonNull;
 
 /**
- *
+ * Guice module that loads in the configuration needed to inject the
+ * dependencies for the Manta Presto Connector.
  */
 public class MantaPrestoModule implements Module {
     /**
-     * Presto defaults to use JDK logging. We use it explicitly here so that
-     * we can be certain to output the configuration before dependency injection
-     * is started. */
-    private static final Logger log = Logger.getLogger(MantaPrestoModule.class.getName());
+     * Logger instance.
+     */
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     private final String connectorId;
     private final TypeManager typeManager;
@@ -53,10 +51,7 @@ public class MantaPrestoModule implements Module {
         requireNonNull(configParams, "Configuration is null");
         this.config = buildConfigContext(configParams);
 
-        if (log.isLoggable(Level.FINE)) {
-            String msg = String.format("Configuration loaded:\n%s", this.config);
-            log.fine(msg);
-        }
+        log.debug("Manta Configuration: {}", this.config);
     }
 
     private ConfigContext buildConfigContext(final Map<String, String> configParams) {
