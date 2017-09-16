@@ -18,7 +18,6 @@ import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
@@ -33,11 +32,6 @@ import static java.util.Objects.requireNonNull;
  * dependencies for the Manta Presto Connector.
  */
 public class MantaPrestoModule implements Module {
-    /**
-     * Logger instance.
-     */
-    private final Logger log = LoggerFactory.getLogger(getClass());
-
     private final String connectorId;
     private final TypeManager typeManager;
     private final ConfigContext config;
@@ -51,16 +45,22 @@ public class MantaPrestoModule implements Module {
         requireNonNull(configParams, "Configuration is null");
         this.config = buildConfigContext(configParams);
 
-        log.debug("Manta Configuration: {}", this.config);
+        LoggerFactory.getLogger(getClass()).debug("Manta Configuration: {}", this.config);
     }
 
     private ConfigContext buildConfigContext(final Map<String, String> configParams) {
-        return new ChainedConfigContext(
-                new EnvVarConfigContext(),
-                new MapConfigContext(System.getProperties()),
-                new MapConfigContext(configParams),
-                new DefaultsConfigContext()
-        );
+        if (configParams != null && !configParams.isEmpty()) {
+            return new ChainedConfigContext(
+                    new EnvVarConfigContext(),
+                    new MapConfigContext(System.getProperties()),
+                    new MapConfigContext(configParams),
+                    new DefaultsConfigContext());
+        } else {
+            return new ChainedConfigContext(
+                    new EnvVarConfigContext(),
+                    new MapConfigContext(System.getProperties()),
+                    new DefaultsConfigContext());
+        }
     }
 
     @Override
@@ -68,7 +68,7 @@ public class MantaPrestoModule implements Module {
         binder.bind(TypeManager.class).toInstance(typeManager);
 
         binder.bind(ConfigContext.class).toInstance(this.config);
-        binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).asEagerSingleton();
+        binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoConnector.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoConnectorId.class).toInstance(new MantaPrestoConnectorId(connectorId));
         binder.bind(MantaPrestoMetadata.class).in(Scopes.SINGLETON);

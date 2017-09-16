@@ -35,23 +35,28 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
         return new MantaPrestoHandleResolver();
     }
 
+    static Injector buildInjector(final String connectorId,
+                           final Map<String, String> config,
+                           final ConnectorContext context) throws Exception {
+        requireNonNull(config, "Manta Connector configuration must not be null");
+
+        // A plugin is not required to use Guice; it is just very convenient
+        Bootstrap app = new Bootstrap(
+                new JsonModule(),
+                new MantaPrestoModule(connectorId, context.getTypeManager(), config));
+
+        return app
+                .strictConfig()
+                .doNotInitializeLogging()
+                .initialize();
+    }
+
     @Override
     public Connector create(final String connectorId,
                             final Map<String, String> config,
                             final ConnectorContext context) {
-        requireNonNull(config, "Manta Connector configuration must not be null");
-
         try {
-            // A plugin is not required to use Guice; it is just very convenient
-            Bootstrap app = new Bootstrap(
-                    new JsonModule(),
-                    new MantaPrestoModule(connectorId, context.getTypeManager(), config));
-
-            Injector injector = app
-                    .strictConfig()
-                    .doNotInitializeLogging()
-                    .initialize();
-
+            Injector injector = buildInjector(connectorId, config, context);
             return injector.getInstance(MantaPrestoConnector.class);
         }
         catch (Exception e) {

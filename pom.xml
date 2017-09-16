@@ -69,6 +69,7 @@
         <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
         <dependency.mockito.version>2.0.2-beta</dependency.mockito.version>
+        <dependency.unitils.version>3.4.6</dependency.unitils.version>
 
         <!-- Plugin versions -->
         <maven-checkstyle-plugin.version>2.17</maven-checkstyle-plugin.version>
@@ -152,6 +153,13 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-all</artifactId>
             <version>${dependency.mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.unitils</groupId>
+            <artifactId>unitils-core</artifactId>
+            <version>${dependency.unitils.version}</version>
             <scope>test</scope>
         </dependency>
 
