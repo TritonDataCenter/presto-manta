@@ -15,10 +15,9 @@ import java.util.Collections;
 /**
  * Plugin definition class for the Manta Presto Connector.
  */
-public class MantaPlugin implements Plugin {
+public class MantaPrestoPlugin implements Plugin {
     @Override
-    public Iterable<ConnectorFactory> getConnectorFactories()
-    {
-        return Collections.singletonList(new MantaConnectorFactory());
+    public Iterable<ConnectorFactory> getConnectorFactories() {
+        return Collections.singletonList(new MantaPrestoConnectorFactory());
     }
 }

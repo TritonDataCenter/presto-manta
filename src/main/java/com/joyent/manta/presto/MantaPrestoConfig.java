@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto;
 
+import com.joyent.manta.config.ConfigContext;
 import io.airlift.configuration.Config;
 import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.config.BaseChainedConfigContext;
@@ -16,6 +17,13 @@ import com.joyent.manta.config.EncryptionAuthenticationMode;
  * Manta configuration provider for the Presto Connector.
  */
 public class MantaPrestoConfig extends BaseChainedConfigContext {
+
+    public MantaPrestoConfig() {
+    }
+
+    public MantaPrestoConfig(final ConfigContext defaultingContext) {
+        super(defaultingContext);
+    }
 
     @Config(MapConfigContext.MANTA_URL_KEY)
     @Override

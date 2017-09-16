@@ -16,24 +16,24 @@ import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 /**
  *
  */
-public class MantaHandleResolver implements ConnectorHandleResolver {
+public class MantaPrestoHandleResolver implements ConnectorHandleResolver {
     @Override
     public Class<? extends ConnectorTableHandle> getTableHandleClass() {
-        return null;
+        return MantaPrestoTableHandle.class;
     }
 
     @Override
     public Class<? extends ConnectorTableLayoutHandle> getTableLayoutHandleClass() {
-        return null;
+        return MantaPrestoTableLayoutHandle.class;
     }
 
     @Override
     public Class<? extends ColumnHandle> getColumnHandleClass() {
-        return null;
+        return MantaPrestoColumnHandle.class;
     }
 
     @Override
     public Class<? extends ConnectorSplit> getSplitClass() {
-        return null;
+        return MantaPrestoSplit.class;
     }
 }
