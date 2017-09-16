@@ -12,9 +12,9 @@ import com.facebook.presto.spi.connector.Connector;
 import com.facebook.presto.spi.connector.ConnectorContext;
 import com.facebook.presto.spi.connector.ConnectorFactory;
 import com.google.inject.Injector;
+import com.joyent.manta.config.MapConfigContext;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Map;
@@ -45,12 +45,11 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
             // A plugin is not required to use Guice; it is just very convenient
             Bootstrap app = new Bootstrap(
                     new JsonModule(),
-                    new MantaPrestoModule(connectorId, context.getTypeManager()));
+                    new MantaPrestoModule(connectorId, context.getTypeManager(), config));
 
             Injector injector = app
                     .strictConfig()
                     .doNotInitializeLogging()
-                    .setRequiredConfigurationProperties(config)
                     .initialize();
 
             return injector.getInstance(MantaPrestoConnector.class);
@@ -62,8 +61,7 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
 
             re.setContextValue("connectorId", connectorId);
 
-            final String configDump = StringUtils.join(
-                    config.entrySet().iterator(), ", ");
+            final String configDump = new MapConfigContext(config).toString();
             re.setContextValue("config", configDump);
 
             final String contextDump = ToStringBuilder.reflectionToString(context);

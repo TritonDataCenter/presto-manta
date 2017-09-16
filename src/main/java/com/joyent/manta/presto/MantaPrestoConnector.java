@@ -13,6 +13,7 @@ import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.transaction.IsolationLevel;
+import com.joyent.manta.client.MantaClient;
 import io.airlift.bootstrap.LifeCycleManager;
 import io.airlift.log.Logger;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -32,16 +33,19 @@ public class MantaPrestoConnector implements Connector {
     private final MantaPrestoMetadata metadata;
     private final MantaPrestoSplitManager splitManager;
     private final MantaPrestoRecordSetProvider recordSetProvider;
+    private final MantaClient mantaClient;
 
     @Inject
     public MantaPrestoConnector(final LifeCycleManager lifeCycleManager,
                                 final MantaPrestoMetadata metadata,
                                 final MantaPrestoSplitManager splitManager,
-                                final MantaPrestoRecordSetProvider recordSetProvider) {
+                                final MantaPrestoRecordSetProvider recordSetProvider,
+                                final MantaClient mantaClient) {
         this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.splitManager = requireNonNull(splitManager, "splitManager is null");
         this.recordSetProvider = requireNonNull(recordSetProvider, "recordSetProvider is null");
+        this.mantaClient = mantaClient;
     }
 
     @Override
@@ -67,6 +71,8 @@ public class MantaPrestoConnector implements Connector {
 
     @Override
     public void shutdown() {
+        mantaClient.closeWithWarning();
+
         try {
             lifeCycleManager.stop();
         } catch (Exception e) {

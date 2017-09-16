@@ -15,6 +15,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.io.Resources;
+import com.joyent.manta.config.ConfigContext;
 import io.airlift.json.JsonCodec;
 
 import javax.inject.Inject;
@@ -40,7 +41,7 @@ public class MantaPrestoClient {
     private final Supplier<Map<String, Map<String, MantaPrestoTable>>> schemas;
 
     @Inject
-    public MantaPrestoClient(final MantaPrestoConfig config,
+    public MantaPrestoClient(final ConfigContext config,
                              final JsonCodec<Map<String, List<MantaPrestoTable>>> catalogCodec)
             throws IOException {
         requireNonNull(config, "config is null");

@@ -27,7 +27,6 @@ public class MantaPrestoSplit implements ConnectorSplit {
     private final String schemaName;
     private final String tableName;
     private final URI uri;
-    private final boolean remotelyAccessible;
     private final List<HostAddress> addresses;
 
     @JsonCreator
@@ -41,8 +40,6 @@ public class MantaPrestoSplit implements ConnectorSplit {
         this.tableName = requireNonNull(tableName, "table name is null");
         this.uri = requireNonNull(uri, "uri is null");
 
-//        if ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) {
-        remotelyAccessible = true;
         addresses = ImmutableList.of(HostAddress.fromUri(uri));
     }
 
@@ -68,8 +65,7 @@ public class MantaPrestoSplit implements ConnectorSplit {
 
     @Override
     public boolean isRemotelyAccessible() {
-        // only http or https is remotely accessible
-        return remotelyAccessible;
+        return true;
     }
 
     @Override
@@ -89,7 +85,6 @@ public class MantaPrestoSplit implements ConnectorSplit {
                 .append("schemaName", schemaName)
                 .append("tableName", tableName)
                 .append("uri", uri)
-                .append("remotelyAccessible", remotelyAccessible)
                 .append("addresses", addresses)
                 .toString();
     }
