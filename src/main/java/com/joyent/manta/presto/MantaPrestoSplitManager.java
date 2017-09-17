@@ -16,9 +16,7 @@ import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
 import javax.inject.Inject;
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -43,22 +41,14 @@ public class MantaPrestoSplitManager implements ConnectorSplitManager {
                                           final ConnectorTableLayoutHandle layout) {
         MantaPrestoTableLayoutHandle layoutHandle = (MantaPrestoTableLayoutHandle) layout;
         MantaPrestoTableHandle tableHandle = layoutHandle.getTable();
-        MantaPrestoTable table = MantaPrestoClient.getTable(tableHandle.getSchemaName(), tableHandle.getTableName());
-        // this can happen if table is removed during a query
-        if (table != null) {
-            String msg = String.format("Table %s.%s no longer exists",
-                    tableHandle.getSchemaName(), tableHandle.getTableName());
-            MantaPrestoRuntimeException re = new MantaPrestoRuntimeException(msg);
-            re.setContextValue("table", table);
+//        MantaPrestoTable table = MantaPrestoClient.getTable(tableHandle.getSchemaName(), tableHandle.getTableName());
 
-            throw re;
-        }
 
         List<ConnectorSplit> splits = new ArrayList<>();
-        for (URI uri : table.getSources()) {
-            splits.add(new MantaPrestoSplit(connectorId, tableHandle.getSchemaName(), tableHandle.getTableName(), uri));
-        }
-        Collections.shuffle(splits);
+//        for (URI uri : table.getSources()) {
+//            splits.add(new MantaPrestoSplit(connectorId, tableHandle.getSchemaName(), tableHandle.getTableName(), uri));
+//        }
+//        Collections.shuffle(splits);
 
         return new FixedSplitSource(splits);
     }

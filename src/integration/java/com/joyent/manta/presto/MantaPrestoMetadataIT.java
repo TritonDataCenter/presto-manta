@@ -12,6 +12,8 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Injector;
 import com.joyent.manta.client.MantaClient;
+import com.joyent.manta.http.MantaHttpHeaders;
+import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -76,18 +78,41 @@ public class MantaPrestoMetadataIT {
                 "Expected no tables listed. Actually there are " + tables.size() + " tables.");
     }
 
-    public void canListTables() throws IOException {
+    public void canListTablesWithValidExtension() throws IOException {
         final String testDir = testPathPrefix + UUID.randomUUID();
         mantaClient.putDirectory(testDir);
 
         List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
-                new MantaPrestoSchemaTableName(testDir, "file-1.log"),
-                new MantaPrestoSchemaTableName(testDir, "file-2.log"),
-                new MantaPrestoSchemaTableName(testDir, "file-3.log")
+                new MantaPrestoSchemaTableName(testDir, "file-1.ndjson"),
+                new MantaPrestoSchemaTableName(testDir, "file-2.ndjson"),
+                new MantaPrestoSchemaTableName(testDir, "file-3.ndjson")
         );
 
         for (MantaPrestoSchemaTableName table : expected) {
-            mantaClient.put(table.getFullPath(), table.getFile() + " content", UTF_8);
+            mantaClient.put(table.getObjectPath(), table.getFile() + " content", UTF_8);
+        }
+
+        List<SchemaTableName> actual = instance.listTables(session, testDir);
+
+        ReflectionAssert.assertLenientEquals(
+                "Tables returned from Manta didn't match files added during test",
+                expected, actual);
+    }
+
+    public void canListTablesWithValidMediaType() throws IOException {
+        final String testDir = testPathPrefix + UUID.randomUUID();
+        mantaClient.putDirectory(testDir);
+
+        List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
+                new MantaPrestoSchemaTableName(testDir, "file-1"),
+                new MantaPrestoSchemaTableName(testDir, "file-2"),
+                new MantaPrestoSchemaTableName(testDir, "file-3")
+        );
+
+        for (MantaPrestoSchemaTableName table : expected) {
+            MantaHttpHeaders headers = new MantaHttpHeaders()
+                    .setContentType("application/x-ndjson; charset=utf8");
+            mantaClient.put(table.getObjectPath(), table.getFile() + " content", headers);
         }
 
         List<SchemaTableName> actual = instance.listTables(session, testDir);

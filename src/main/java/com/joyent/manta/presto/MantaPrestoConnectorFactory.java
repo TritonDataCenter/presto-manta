@@ -13,6 +13,7 @@ import com.facebook.presto.spi.connector.ConnectorContext;
 import com.facebook.presto.spi.connector.ConnectorFactory;
 import com.google.inject.Injector;
 import com.joyent.manta.config.MapConfigContext;
+import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
 import org.apache.commons.lang3.builder.ToStringBuilder;

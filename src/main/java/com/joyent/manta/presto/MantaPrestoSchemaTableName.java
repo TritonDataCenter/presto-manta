@@ -10,7 +10,6 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.util.MantaUtils;
 
 import java.nio.file.Paths;
@@ -26,9 +25,13 @@ public class MantaPrestoSchemaTableName extends SchemaTableName {
     private final String directory;
     private final String file;
 
-    public MantaPrestoSchemaTableName(final MantaObject object) {
-        this(Paths.get(object.getPath()).getParent().toString(),
-                MantaUtils.lastItemInPath(object.getPath()));
+    public MantaPrestoSchemaTableName(final SchemaTableName tableName) {
+        this(tableName.getSchemaName(), tableName.getTableName());
+    }
+
+    public MantaPrestoSchemaTableName(final String objectPath) {
+        this(Paths.get(objectPath).getParent().toString(),
+                MantaUtils.lastItemInPath(objectPath));
     }
 
     @JsonCreator
@@ -50,7 +53,7 @@ public class MantaPrestoSchemaTableName extends SchemaTableName {
     /**
      * @return the full path to the Manta file include the directory
      */
-    public String getFullPath() {
+    public String getObjectPath() {
         return getDirectory() + SEPARATOR + getFile();
     }
 
