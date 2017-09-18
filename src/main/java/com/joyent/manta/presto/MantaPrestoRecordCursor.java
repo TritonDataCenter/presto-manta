@@ -13,6 +13,7 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteSource;
 import com.google.common.io.CountingInputStream;
+import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;

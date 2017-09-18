@@ -9,19 +9,28 @@ package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.config.ChainedConfigContext;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
+import com.joyent.manta.util.MantaUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
+import static com.joyent.manta.client.MantaClient.SEPARATOR;
 import static io.airlift.json.JsonBinder.jsonBinder;
 import static io.airlift.json.JsonCodec.listJsonCodec;
 import static io.airlift.json.JsonCodecBinder.jsonCodecBinder;
@@ -32,9 +41,15 @@ import static java.util.Objects.requireNonNull;
  * dependencies for the Manta Presto Connector.
  */
 public class MantaPrestoModule implements Module {
+    /**
+     * Logger instance.
+     */
+    private final static Logger log = LoggerFactory.getLogger(MantaPrestoModule.class);
+
     private final String connectorId;
     private final TypeManager typeManager;
     private final ConfigContext config;
+    private final Map<String, String> schemaMapping = new HashMap<>();
 
     public MantaPrestoModule(final String connectorId,
                              final TypeManager typeManager,
@@ -45,26 +60,84 @@ public class MantaPrestoModule implements Module {
         requireNonNull(configParams, "Configuration is null");
         this.config = buildConfigContext(configParams);
 
-        LoggerFactory.getLogger(getClass()).debug("Manta Configuration: {}", this.config);
+        log.debug("Manta Configuration: {}", this.config);
+    }
+
+    /**
+     * Reads through the presto catalog configuration and maps the schema
+     *
+     * @param config map to read configuration from
+     * @param mapToUpdate map to add schema information to
+     */
+    static void addToSchemaMapping(final Map<String, String> config,
+        final Map<String, String> mapToUpdate, final String homeDir) {
+        for (final Map.Entry<String, String> entry : config.entrySet()) {
+            String key = entry.getKey();
+            String val = entry.getValue();
+            String[] parts = StringUtils.split(key, ".", 3);
+
+            if (parts.length != 3) {
+                continue;
+            }
+
+            boolean isSchemaKey = parts[0].equals("manta") && parts[1].equals("schema");
+
+            if (!isSchemaKey) {
+                continue;
+            }
+
+            if (StringUtils.isNotBlank(parts[2]) && StringUtils.isNotBlank(val)) {
+                final String path;
+
+                if (val.startsWith("~~")) {
+                    path = MantaUtils.formatPath(homeDir + val.substring(2));
+                } else {
+                    path = MantaUtils.formatPath(val);
+                }
+
+                mapToUpdate.put(parts[2], path);
+            }
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("The following schema mappings were added:\n{}",
+                    Joiner.on('\n').withKeyValueSeparator(": ").join(mapToUpdate));
+        }
     }
 
     private ConfigContext buildConfigContext(final Map<String, String> configParams) {
+        final ChainedConfigContext context;
+
         if (configParams != null && !configParams.isEmpty()) {
-            return new ChainedConfigContext(
+            context = new ChainedConfigContext(
                     new EnvVarConfigContext(),
                     new MapConfigContext(System.getProperties()),
                     new MapConfigContext(configParams),
                     new DefaultsConfigContext());
+
+            String homeDir = context.getMantaHomeDirectory();
+            addToSchemaMapping(configParams, schemaMapping, homeDir);
         } else {
-            return new ChainedConfigContext(
+            context = new ChainedConfigContext(
                     new EnvVarConfigContext(),
                     new MapConfigContext(System.getProperties()),
                     new DefaultsConfigContext());
+
+            String homeDir = context.getMantaHomeDirectory();
+            Map<String, String> defaultSchema = ImmutableMap.of(
+                    "manta.schema.default", homeDir + SEPARATOR + "stor");
+            addToSchemaMapping(defaultSchema, schemaMapping, homeDir);
         }
+
+        return context;
     }
 
     @Override
     public void configure(final Binder binder) {
+        binder.bind(new TypeLiteral<Map<String, String>>(){})
+                .annotatedWith(Names.named("SchemaMapping"))
+                .toInstance(ImmutableMap.copyOf(schemaMapping));
+
         binder.bind(TypeManager.class).toInstance(typeManager);
 
         binder.bind(ConfigContext.class).toInstance(this.config);

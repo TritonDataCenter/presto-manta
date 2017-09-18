@@ -47,7 +47,6 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
                 new MantaPrestoModule(connectorId, context.getTypeManager(), config));
 
         return app
-                .strictConfig()
                 .doNotInitializeLogging()
                 .initialize();
     }

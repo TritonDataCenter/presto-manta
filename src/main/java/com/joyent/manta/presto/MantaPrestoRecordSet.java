@@ -13,6 +13,7 @@ import com.facebook.presto.spi.type.Type;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
+import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 
 import java.net.MalformedURLException;

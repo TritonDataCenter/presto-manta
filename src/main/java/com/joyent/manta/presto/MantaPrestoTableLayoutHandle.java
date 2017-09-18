@@ -17,17 +17,13 @@ import java.util.Objects;
  *
  */
 public class MantaPrestoTableLayoutHandle implements ConnectorTableLayoutHandle {
-    private final MantaPrestoTableHandle table;
+    private final MantaPrestoTable table;
 
     @JsonCreator
-    public MantaPrestoTableLayoutHandle(@JsonProperty("table") MantaPrestoTableHandle table) {
+    public MantaPrestoTableLayoutHandle(@JsonProperty("table") MantaPrestoTable table) {
         this.table = table;
     }
 
-    @JsonProperty
-    public MantaPrestoTableHandle getTable() {
-        return table;
-    }
 
     @Override
     public boolean equals(Object o) {

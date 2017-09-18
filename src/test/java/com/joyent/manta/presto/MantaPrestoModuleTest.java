@@ -7,11 +7,15 @@
  */
 package com.joyent.manta.presto;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 import com.joyent.manta.client.MantaClient;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Test
 public class MantaPrestoModuleTest {
@@ -21,6 +25,37 @@ public class MantaPrestoModuleTest {
     public void before() {
         injector = MantaPrestoTestUtils.createInjectorInstance(
                 MantaPrestoTestUtils.UNIT_TEST_CONFIG);
+    }
+
+    public void canReadFromConfigAndUpdateSchemaMapping() {
+        Map<String, String> config = ImmutableMap.of(
+                "manta.user", "user",
+                "manta.schema.default", "/user/stor/default-directory",
+                "manta.schema.another", "/user/stor/a/b/another",
+                "manta.schema.relative", "~~/stor/relative"
+        );
+        Map<String, String> schemaMapping = new HashMap<>();
+
+        MantaPrestoModule.addToSchemaMapping(config, schemaMapping, "/user");
+
+        Assert.assertTrue(schemaMapping.size() == 3,
+                "Expected only a schema map with 3 entries. Actually: "
+                        + schemaMapping.size() + ".");
+
+        Assert.assertEquals(
+                schemaMapping.get("default"),
+                config.get("manta.schema.default"),
+                "Schema mapping for 'default' schema not created");
+
+        Assert.assertEquals(
+                schemaMapping.get("another"),
+                config.get("manta.schema.another"),
+                "Schema mapping for 'another' schema not created");
+
+        Assert.assertEquals(
+                schemaMapping.get("relative"),
+                "/user/stor/relative",
+                "Schema mapping for 'another' schema not created");
     }
 
     public void verifyMantaClientInstancesAreTheSameInstance() {

@@ -14,6 +14,7 @@ import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.common.collect.ImmutableList;
+import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.inject.Inject;

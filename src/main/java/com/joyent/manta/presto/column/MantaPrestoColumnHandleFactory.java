@@ -5,9 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package com.joyent.manta.presto;
+package com.joyent.manta.presto.column;
 
 import com.google.common.io.Files;
+import com.joyent.manta.presto.MantaPrestoFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import org.apache.commons.lang3.StringUtils;
 

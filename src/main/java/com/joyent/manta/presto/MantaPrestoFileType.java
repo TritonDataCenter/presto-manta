@@ -16,7 +16,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Enum indicating the type of file that will be processed.
  */
-enum MantaPrestoFileType {
+public enum MantaPrestoFileType {
     /**
      * New line delimited JSON.
      */
@@ -29,12 +29,12 @@ enum MantaPrestoFileType {
     /**
      * File extensions related to enum value.
      */
-    final String[] extensions;
+    private final String[] extensions;
 
     /**
      * RFC4288 media types associated with file type.
      */
-    final String[] mediaTypes;
+    private final String[] mediaTypes;
 
     /**
      * Lookup table to resolve enum value by extension.
@@ -75,7 +75,7 @@ enum MantaPrestoFileType {
      * @param extension file extension
      * @return related enum value or null if not found
      */
-    static MantaPrestoFileType valueByExtension(final String extension) {
+    public static MantaPrestoFileType valueByExtension(final String extension) {
         requireNonNull(extension, "Extension is null");
         return extensionLookup.get(extension);
     }
@@ -86,7 +86,7 @@ enum MantaPrestoFileType {
      * @param mediaType HTTP content type (media type)
      * @return related enum value or null if not found
      */
-    static MantaPrestoFileType valueByMediaType(final String mediaType) {
+    public static MantaPrestoFileType valueByMediaType(final String mediaType) {
         requireNonNull(mediaType, "Media type is null");
         return mediaTypeLookup.get(mediaType);
     }
@@ -97,7 +97,7 @@ enum MantaPrestoFileType {
      * @param extension extension to check
      * @return true if supported
      */
-    static boolean isSupportedFileTypeByExtension(final String extension) {
+    public static boolean isSupportedFileTypeByExtension(final String extension) {
         return extensionLookup.containsKey(extension);
     }
 
@@ -107,7 +107,7 @@ enum MantaPrestoFileType {
      * @param mediaType media type to check
      * @return true if supported
      */
-    static boolean isSupportFileTypeByMediaType(final String mediaType) {
+    public static boolean isSupportFileTypeByMediaType(final String mediaType) {
         return mediaTypeLookup.containsKey(mediaType);
     }
 }

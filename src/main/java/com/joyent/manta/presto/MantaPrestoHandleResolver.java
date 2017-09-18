@@ -12,6 +12,7 @@ import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
+import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
 
 /**
  *
@@ -19,7 +20,7 @@ import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 public class MantaPrestoHandleResolver implements ConnectorHandleResolver {
     @Override
     public Class<? extends ConnectorTableHandle> getTableHandleClass() {
-        return MantaPrestoTableHandle.class;
+        return MantaPrestoSchemaTableName.class;
     }
 
     @Override

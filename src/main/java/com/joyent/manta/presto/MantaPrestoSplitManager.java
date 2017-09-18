@@ -40,7 +40,7 @@ public class MantaPrestoSplitManager implements ConnectorSplitManager {
                                           final ConnectorSession session,
                                           final ConnectorTableLayoutHandle layout) {
         MantaPrestoTableLayoutHandle layoutHandle = (MantaPrestoTableLayoutHandle) layout;
-        MantaPrestoTableHandle tableHandle = layoutHandle.getTable();
+//        MantaPrestoSchemaTableName tableHandle = layoutHandle.getTable();
 //        MantaPrestoTable table = MantaPrestoClient.getTable(tableHandle.getSchemaName(), tableHandle.getTableName());
 
 

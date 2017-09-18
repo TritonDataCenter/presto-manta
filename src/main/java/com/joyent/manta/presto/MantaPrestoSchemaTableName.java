@@ -7,12 +7,10 @@
  */
 package com.joyent.manta.presto;
 
+import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.SchemaTableName;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.joyent.manta.util.MantaUtils;
+import com.facebook.presto.spi.SchemaTablePrefix;
 
-import java.nio.file.Paths;
 import java.util.Objects;
 
 import static com.joyent.manta.client.MantaClient.SEPARATOR;
@@ -21,40 +19,38 @@ import static com.joyent.manta.client.MantaClient.SEPARATOR;
  * A Manta Presto specific implementation of {@link SchemaTableName} that
  * preserves the directory path structure with case sensitivity.
  */
-public class MantaPrestoSchemaTableName extends SchemaTableName {
+public class MantaPrestoSchemaTableName extends SchemaTableName
+        implements ConnectorTableHandle {
     private final String directory;
-    private final String file;
+    private final String relativeFilePath;
 
-    public MantaPrestoSchemaTableName(final SchemaTableName tableName) {
-        this(tableName.getSchemaName(), tableName.getTableName());
+    public MantaPrestoSchemaTableName(final String schemaName,
+                                      final String tableName,
+                                      final String directory,
+                                      final String relativeFilePath) {
+        super(schemaName, tableName);
+        this.directory = directory;
+        this.relativeFilePath = relativeFilePath;
     }
 
-    public MantaPrestoSchemaTableName(final String objectPath) {
-        this(Paths.get(objectPath).getParent().toString(),
-                MantaUtils.lastItemInPath(objectPath));
-    }
-
-    @JsonCreator
-    public MantaPrestoSchemaTableName(@JsonProperty("schema") final String schemaName,
-                                      @JsonProperty("table") final String tableName) {
-        super(MantaUtils.formatPath(schemaName), tableName);
-        this.directory = MantaUtils.formatPath(schemaName);
-        this.file = tableName;
+    @Override
+    public SchemaTablePrefix toSchemaTablePrefix() {
+        return new SchemaTablePrefix(directory, relativeFilePath);
     }
 
     public String getDirectory() {
         return directory;
     }
 
-    public String getFile() {
-        return file;
+    public String getRelativeFilePath() {
+        return relativeFilePath;
     }
 
     /**
-     * @return the full path to the Manta file include the directory
+     * @return the full path to the Manta relativeFilePath include the directory
      */
     public String getObjectPath() {
-        return getDirectory() + SEPARATOR + getFile();
+        return getDirectory() + SEPARATOR + getRelativeFilePath();
     }
 
     @Override
@@ -69,11 +65,11 @@ public class MantaPrestoSchemaTableName extends SchemaTableName {
         final MantaPrestoSchemaTableName that = (MantaPrestoSchemaTableName) o;
 
         return Objects.equals(directory, that.directory)
-               && Objects.equals(file, that.file);
+               && Objects.equals(relativeFilePath, that.relativeFilePath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(directory, file);
+        return Objects.hash(directory, relativeFilePath);
     }
 }
