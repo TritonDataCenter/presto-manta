@@ -31,6 +31,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +39,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -107,15 +106,13 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             throw unknownSchemaException(schemaName);
         }
 
-        final Path directoryPath = Paths.get(directory);
-
         try {
             return mantaClient
                     .listObjects(directory)
                     .filter(tableListingFilter)
                     .map(obj -> {
-                        final String relativePath = Paths.get(obj.getPath())
-                                .relativize(directoryPath).toString();
+                        final String relativePath =
+                                StringUtils.removeStart(obj.getPath(), directory);
 
                         return new MantaPrestoSchemaTableName(
                                 schemaName, relativePath, directory, relativePath);

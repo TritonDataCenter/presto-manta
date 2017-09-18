@@ -99,8 +99,8 @@ public class MantaPrestoMetadataIT {
 
         List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
                 new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-1.ndjson"),
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-2.ndjson"),
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-3.ndjson")
+                new MantaPrestoSchemaTableName("default", "file-2.ndjson", testDir, "file-2.ndjson"),
+                new MantaPrestoSchemaTableName("default", "file-3.ndjson", testDir, "file-3.ndjson")
         );
 
         for (MantaPrestoSchemaTableName table : expected) {
@@ -120,9 +120,9 @@ public class MantaPrestoMetadataIT {
         mantaClient.putDirectory(testDir);
 
         List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-1"),
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-2"),
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-3")
+                new MantaPrestoSchemaTableName("default", "file-1", testDir, "file-1"),
+                new MantaPrestoSchemaTableName("default", "file-2", testDir, "file-2"),
+                new MantaPrestoSchemaTableName("default", "file-3", testDir, "file-3")
         );
 
         for (MantaPrestoSchemaTableName table : expected) {

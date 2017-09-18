@@ -61,15 +61,15 @@ public class MantaPrestoSchemaTableName extends SchemaTableName
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        if (!super.equals(o)) return false;
 
         final MantaPrestoSchemaTableName that = (MantaPrestoSchemaTableName) o;
-
         return Objects.equals(directory, that.directory)
                && Objects.equals(relativeFilePath, that.relativeFilePath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(directory, relativeFilePath);
+        return Objects.hash(super.hashCode(), directory, relativeFilePath);
     }
 }
