@@ -31,6 +31,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
+import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
@@ -111,11 +112,14 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
                     .listObjects(directory)
                     .filter(tableListingFilter)
                     .map(obj -> {
-                        final String relativePath =
-                                StringUtils.removeStart(obj.getPath(), directory);
+                        String relativePath = StringUtils.removeStart(
+                                obj.getPath(), directory);
+                        String cleanRelativePath = StringUtils.stripStart(
+                                relativePath, MantaClient.SEPARATOR);
 
                         return new MantaPrestoSchemaTableName(
-                                schemaName, relativePath, directory, relativePath);
+                                schemaName, cleanRelativePath,
+                                directory, cleanRelativePath);
                     })
                     .collect(Collectors.toList());
         } catch (IOException e) {
@@ -234,8 +238,14 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             final ConnectorSession session,
             final SchemaTablePrefix prefix) {
         requireNonNull(prefix, "prefix is null");
+        String directory = schemaMapping.get(prefix.getSchemaName());
 
-        String path = prefix.getSchemaName() + MantaClient.SEPARATOR + prefix.getTableName();
+        if (directory == null) {
+            throw unknownSchemaException(prefix.getSchemaName());
+        }
+
+        String path = MantaUtils.formatPath(directory
+                + MantaClient.SEPARATOR + prefix.getTableName());
         String firstLine;
 
         MantaObjectInputStream in = null;
