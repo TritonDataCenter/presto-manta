@@ -65,7 +65,8 @@ public class ObjectToTableDirectoryListingFilter implements Predicate<MantaObjec
         // Determine if the media type stored is of a supported value
 
         try {
-            String mediaType = MediaType.parse(contentType).withoutParameters().toString();
+            String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(
+                    contentType);
             return MantaPrestoFileType.isSupportFileTypeByMediaType(mediaType);
         } catch (IllegalArgumentException e) {
             return false;

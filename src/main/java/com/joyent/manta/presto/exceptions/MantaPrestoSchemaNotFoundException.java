@@ -48,7 +48,20 @@ public class MantaPrestoSchemaNotFoundException extends SchemaNotFoundException
         this.exceptionContext = new DefaultExceptionContext();
     }
 
-        /* All code below was copied from org.apache.commons.lang3.exception.ContextedException
+    public static MantaPrestoSchemaNotFoundException withNoDirectoryMessage(final String schemaName) {
+        String msg = "No Manta directory that maps to the configured value "
+                + "was found for the specified schema. Make sure that you "
+                + "have specified the schema in your catalog configuration "
+                + "in the 'manta.schema.<schema name> = <manta directory name>' "
+                + "format.";
+        MantaPrestoSchemaNotFoundException me =
+                new MantaPrestoSchemaNotFoundException(schemaName, msg);
+        me.setContextValue("schemaNameInBrackets",
+                String.format("[%s]", schemaName));
+        return me;
+    }
+
+    /* All code below was copied from org.apache.commons.lang3.exception.ContextedException
      * and therefore falls under the Apache 2.0 license: http://www.apache.org/licenses/
      */
 

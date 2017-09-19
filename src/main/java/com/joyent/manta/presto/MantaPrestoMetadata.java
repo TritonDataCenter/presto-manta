@@ -20,18 +20,16 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.exception.MantaClientHttpResponseException;
 import com.joyent.manta.exception.MantaErrorCode;
-import com.joyent.manta.presto.column.FirstLinePeeker;
+import com.joyent.manta.presto.column.ColumnLister;
 import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
-import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
+import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
-import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
-import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
@@ -68,17 +66,20 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
 
     private final String connectorId;
     private final MantaClient mantaClient;
-    private final MantaPrestoClient MantaPrestoClient;
+    private final RedirectingColumnLister columnLister;
+    /**
+     * Map relating configured schema name to Manta directory path.
+     */
     private final Map<String, String> schemaMapping;
     private final ObjectToTableDirectoryListingFilter tableListingFilter;
 
     @Inject
     public MantaPrestoMetadata(final MantaPrestoConnectorId connectorId,
-                               final MantaPrestoClient MantaPrestoClient,
+                               final RedirectingColumnLister columnLister,
                                @Named("SchemaMapping") final Map<String, String> schemaMapping,
                                final MantaClient mantaClient) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
-        this.MantaPrestoClient = requireNonNull(MantaPrestoClient, "client is null");
+        this.columnLister = requireNonNull(columnLister, "column lister is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client instance is null");
         this.tableListingFilter = new ObjectToTableDirectoryListingFilter(mantaClient);
         this.schemaMapping = schemaMapping;
@@ -104,7 +105,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
         final String directory = schemaMapping.get(schemaName);
 
         if (directory == null) {
-            throw unknownSchemaException(schemaName);
+            throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(schemaName);
         }
 
         try {
@@ -156,7 +157,8 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             String directory = schemaMapping.get(tableName.getSchemaName());
 
             if (directory == null) {
-                throw unknownSchemaException(tableName.getSchemaName());
+                throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(
+                        tableName.getSchemaName());
             }
 
             // TODO: This probably won't work - let's find out if it is needed
@@ -224,7 +226,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
 //        ImmutableMap.Builder<String, ColumnHandle> columnHandles = ImmutableMap.builder();
 //        int index = 0;
 //        for (ColumnMetadata column : table.getColumnsMetadata()) {
-//            columnHandles.put(column.getName(), new MantaPrestoColumnHandle(connectorId, column.getName(), column.getType(), index));
+//            columnHandles.put(column.getName(), new mantaPrestoColumnHandle(connectorId, column.getName(), column.getType(), index));
 //            index++;
 //        }
 //        return columnHandles.build();
@@ -238,41 +240,21 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             final ConnectorSession session,
             final SchemaTablePrefix prefix) {
         requireNonNull(prefix, "prefix is null");
-        String directory = schemaMapping.get(prefix.getSchemaName());
+        String schemaName = prefix.getSchemaName();
+
+        String directory = schemaMapping.get(schemaName);
 
         if (directory == null) {
-            throw unknownSchemaException(prefix.getSchemaName());
+            throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(schemaName);
         }
 
-        String path = MantaUtils.formatPath(directory
-                + MantaClient.SEPARATOR + prefix.getTableName());
-        String firstLine;
+        SchemaTableName table = new MantaPrestoSchemaTableName(schemaName,
+                prefix.getTableName(), directory, prefix.getTableName());
 
-        MantaObjectInputStream in = null;
+        List<ColumnMetadata> columns = columnLister.listColumns(
+                schemaName, prefix.getTableName());
 
-        try {
-            in = mantaClient.getAsInputStream(path);
-        } catch (IOException e) {
-            String msg = "Problem peeking at the first line of remote file";
-            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(in, me);
-
-            throw me;
-        }
-
-        try (FirstLinePeeker peeker = new FirstLinePeeker(in)) {
-            firstLine = peeker.readFirstLine();
-        } catch (IOException e) {
-            String msg = "Problem peeking at the first line of remote file";
-            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(in, me);
-
-            throw me;
-        }
-
-        System.out.println(firstLine);
-
-        return null;
+        return ImmutableMap.of(table, columns);
     }
 
     @Override
@@ -288,18 +270,5 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
                 .append("connectorId", connectorId)
                 .append("mantaClient", mantaClient)
                 .toString();
-    }
-
-    private MantaPrestoSchemaNotFoundException unknownSchemaException(final String schemaName) {
-        String msg = "No mapping to a Manta directory was found for the "
-                + "specified schema. Make sure that you have specified "
-                + "the schema in your catalog configuration in the "
-                + "'manta.schema.<schema name> = <manta directory name>' "
-                + "format.";
-        MantaPrestoSchemaNotFoundException me =
-                new MantaPrestoSchemaNotFoundException(schemaName, msg);
-        me.setContextValue("schemaNameInBrackets",
-                String.format("[%s]", schemaName));
-        return me;
     }
 }

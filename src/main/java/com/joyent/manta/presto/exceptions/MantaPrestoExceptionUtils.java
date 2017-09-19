@@ -13,7 +13,10 @@ import org.apache.commons.lang3.exception.ExceptionContext;
 /**
  * Class providing utility functions for exception classes.
  */
-public class MantaPrestoExceptionUtils {
+public final class MantaPrestoExceptionUtils {
+    /**
+     * Private constructor because no non-static instances are needed.
+     */
     private MantaPrestoExceptionUtils() {
     }
 

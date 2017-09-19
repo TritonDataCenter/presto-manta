@@ -20,11 +20,11 @@ public enum MantaPrestoFileType {
     /**
      * New line delimited JSON.
      */
-    LDJSON(new String[] { "json", "ndjson" }, new String[] { "application/x-ndjson", "x-json-stream", "application/json" }),
+    LDJSON(new String[] {"json", "ndjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
     /**
      * Comma separated value.
      */
-    CSV(new String[] { "csv" }, new String[] { "text/csv", "application/csv" });
+    CSV(new String[] {"csv"}, new String[] {"text/csv", "application/csv"});
 
     /**
      * File extensions related to enum value.
@@ -39,17 +39,17 @@ public enum MantaPrestoFileType {
     /**
      * Lookup table to resolve enum value by extension.
      */
-    private final static Map<String, MantaPrestoFileType> extensionLookup;
+    private static final Map<String, MantaPrestoFileType> EXTENSION_LOOKUP;
 
     /**
      * Lookup table to resolve enum value by media type.
      */
-    private final static Map<String, MantaPrestoFileType> mediaTypeLookup;
+    private static final Map<String, MantaPrestoFileType> MEDIA_TYPE_LOOKUP;
 
     static {
-        ImmutableMap.Builder <String, MantaPrestoFileType> extensionMapBuilder =
+        ImmutableMap.Builder<String, MantaPrestoFileType> extensionMapBuilder =
                 new ImmutableMap.Builder<>();
-        ImmutableMap.Builder <String, MantaPrestoFileType> mediaTypeMapBuilder =
+        ImmutableMap.Builder<String, MantaPrestoFileType> mediaTypeMapBuilder =
                 new ImmutableMap.Builder<>();
 
         for (MantaPrestoFileType type : values()) {
@@ -60,8 +60,8 @@ public enum MantaPrestoFileType {
                 mediaTypeMapBuilder.put(mediaType, type);
             }
         }
-        extensionLookup = extensionMapBuilder.build();
-        mediaTypeLookup = mediaTypeMapBuilder.build();
+        EXTENSION_LOOKUP = extensionMapBuilder.build();
+        MEDIA_TYPE_LOOKUP = mediaTypeMapBuilder.build();
     }
 
     MantaPrestoFileType(final String[] extensions, final String[] mediaTypes) {
@@ -77,7 +77,7 @@ public enum MantaPrestoFileType {
      */
     public static MantaPrestoFileType valueByExtension(final String extension) {
         requireNonNull(extension, "Extension is null");
-        return extensionLookup.get(extension);
+        return EXTENSION_LOOKUP.get(extension);
     }
 
     /**
@@ -88,7 +88,7 @@ public enum MantaPrestoFileType {
      */
     public static MantaPrestoFileType valueByMediaType(final String mediaType) {
         requireNonNull(mediaType, "Media type is null");
-        return mediaTypeLookup.get(mediaType);
+        return MEDIA_TYPE_LOOKUP.get(mediaType);
     }
 
     /**
@@ -98,7 +98,7 @@ public enum MantaPrestoFileType {
      * @return true if supported
      */
     public static boolean isSupportedFileTypeByExtension(final String extension) {
-        return extensionLookup.containsKey(extension);
+        return EXTENSION_LOOKUP.containsKey(extension);
     }
 
     /**
@@ -108,6 +108,6 @@ public enum MantaPrestoFileType {
      * @return true if supported
      */
     public static boolean isSupportFileTypeByMediaType(final String mediaType) {
-        return mediaTypeLookup.containsKey(mediaType);
+        return MEDIA_TYPE_LOOKUP.containsKey(mediaType);
     }
 }

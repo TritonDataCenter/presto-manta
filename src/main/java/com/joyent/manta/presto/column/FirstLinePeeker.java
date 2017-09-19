@@ -25,7 +25,7 @@ import java.util.Scanner;
  * Helper class that reads the first non-blank line from a remote Manta file and
  * then aborts the connection on close().
  */
-public class FirstLinePeeker implements AutoCloseable {
+public class FirstLinePeeker {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     private final MantaObjectInputStream inputStream;
@@ -82,10 +82,5 @@ public class FirstLinePeeker implements AutoCloseable {
                     .warn("Illegal character set on content-type: {}", contentType);
             return DEFAULT_CHARSET;
         }
-    }
-
-    @Override
-    public void close() throws IOException {
-        inputStream.abortConnection();
     }
 }
