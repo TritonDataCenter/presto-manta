@@ -7,11 +7,17 @@
  */
 package com.joyent.manta.presto.column.json;
 
-import com.facebook.presto.spi.ColumnMetadata;
-import com.facebook.presto.spi.type.*;
+import com.facebook.presto.spi.type.BigintType;
+import com.facebook.presto.spi.type.BooleanType;
+import com.facebook.presto.spi.type.DecimalType;
+import com.facebook.presto.spi.type.DoubleType;
+import com.facebook.presto.spi.type.IntegerType;
+import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.VarbinaryType;
+import com.facebook.presto.spi.type.VarcharType;
+import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.presto.MantaPrestoFileType;
@@ -113,8 +119,8 @@ public class JsonFileColumnLister implements ColumnLister {
                     extraInfo = "number";
                     break;
                 case OBJECT:
-                    type = VarcharType.VARCHAR;
-                    extraInfo = "object";
+                    type = new JsonType();
+                    extraInfo = "jsonObject";
                     break;
                 case POJO:
                     type = VarcharType.VARCHAR;

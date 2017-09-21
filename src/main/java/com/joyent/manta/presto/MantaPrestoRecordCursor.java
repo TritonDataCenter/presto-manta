@@ -12,7 +12,7 @@ import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.base.Strings;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
@@ -20,6 +20,7 @@ import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.column.MantaPrestoColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
+import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
@@ -47,7 +48,6 @@ public class MantaPrestoRecordCursor implements RecordCursor {
     private final long totalBytes;
     private long lines = 0L;
     private Long readTimeStartNanos = null;
-    private List<String> fields;
 
     private final String objectPath;
     private final CountingInputStream countingInputStream;
@@ -148,19 +148,51 @@ public class MantaPrestoRecordCursor implements RecordCursor {
 
     @Override
     public Slice getSlice(final int field) {
-        return Slices.utf8Slice(row.get(field).asText());
+        final JsonNode node = row.get(field);
+        final String text;
+
+        /* We determine if we have a text node and render it as text for the
+         * typical case. For JSON objects, although they are identified as
+         * the JSON type within Presto, they are processed as a Slice from a
+         * plugin's perspective, so we detect if a node is an object and just
+         * render it as JSON text and return.
+         */
+        if (node.isTextual()) {
+            text = node.asText();
+        } else if (node.isObject()) {
+            text = node.toString();
+        } else {
+            String msg = "Unsupported type passed as slice";
+            MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
+            me.setContextValue("objectPath", objectPath);
+            me.setContextValue("fieldNumber", field);
+            me.setContextValue("fieldMappings", Joiner.on("->").join(row.entrySet()));
+            me.setContextValue("node", node);
+            throw me;
+        }
+
+        return Slices.utf8Slice(text);
     }
 
     @Override
     public Object getObject(final int field) {
-        throw new UnsupportedOperationException();
+        return row.get(field);
     }
 
     @Override
     public boolean isNull(final int field) {
-        checkArgument(field < columns.size(), "Invalid field index");
+        final JsonNode node = row.get(field);
 
-        return row.get(field).isNull() || Strings.isNullOrEmpty(row.get(field).asText());
+        if (node == null) {
+            String msg = "Invalid field number specified";
+            MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
+            me.setContextValue("objectPath", objectPath);
+            me.setContextValue("fieldNumber", field);
+            me.setContextValue("fieldMappings", Joiner.on("->").join(row.entrySet()));
+            throw me;
+        }
+
+        return node.isNull();
     }
 
     @Override
@@ -169,12 +201,12 @@ public class MantaPrestoRecordCursor implements RecordCursor {
         Closeables.closeQuietly(mantaObjectInputStream);
     }
 
-    private static Map<Integer, JsonNode> mapOrdinalToNode(final ObjectNode object) {
+    private Map<Integer, JsonNode> mapOrdinalToNode(final ObjectNode object) {
         ImmutableMap.Builder<Integer, JsonNode> map = new ImmutableMap.Builder<>();
 
         int count = 0;
-        for (JsonNode node : object) {
-            map.put(count++, node);
+        for (MantaPrestoColumn column : columns) {
+            map.put(count++, object.get(column.getName()));
         }
 
         return map.build();
