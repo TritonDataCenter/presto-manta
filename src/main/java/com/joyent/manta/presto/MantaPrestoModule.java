@@ -22,23 +22,18 @@ import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
-import com.joyent.manta.presto.column.ColumnLister;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
-import com.joyent.manta.presto.column.json.JsonFileColumnLister;
+import com.joyent.manta.presto.record.json.MantaPrestoJsonFileColumnLister;
 import com.joyent.manta.util.MantaUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
 
 import static com.joyent.manta.client.MantaClient.SEPARATOR;
 import static io.airlift.json.JsonBinder.jsonBinder;
-import static io.airlift.json.JsonCodec.listJsonCodec;
-import static io.airlift.json.JsonCodecBinder.jsonCodecBinder;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -169,7 +164,7 @@ public class MantaPrestoModule implements Module {
         binder.bind(MantaPrestoConnector.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoConnectorId.class).toInstance(new MantaPrestoConnectorId(connectorId));
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
-        binder.bind(JsonFileColumnLister.class).in(Scopes.SINGLETON);
+        binder.bind(MantaPrestoJsonFileColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoMetadata.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoRecordSetProvider.class).in(Scopes.SINGLETON);

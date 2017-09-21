@@ -8,6 +8,11 @@
 package com.joyent.manta.presto;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Files;
+import com.joyent.manta.client.MantaObject;
+import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
+import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
+import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.Map;
 
@@ -109,5 +114,34 @@ public enum MantaPrestoFileType {
      */
     public static boolean isSupportFileTypeByMediaType(final String mediaType) {
         return MEDIA_TYPE_LOOKUP.containsKey(mediaType);
+    }
+
+    /**
+     * Determines what {@link MantaPrestoFileType} is associated with
+     * an object via looking up metadata on its file extension or
+     * media type.
+     *
+     * @param object object reference for debugging information
+     * @return instance of enum associated with object's file type
+     */
+    public static MantaPrestoFileType determineFileType(final MantaObject object) {
+        requireNonNull(object, "Manta object is null");
+
+        final String extension = Files.getFileExtension(object.getPath());
+        final String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(
+                object.getContentType());
+
+        final MantaPrestoFileType type = ObjectUtils.firstNonNull(
+                valueByExtension(extension), valueByMediaType(mediaType));
+
+        if (type == null) {
+            String msg = "Table name (Manta object) specified is not a "
+                    + "supported file type";
+            MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
+            MantaPrestoExceptionUtils.annotateMantaObjectDetails(object, me);
+            throw me;
+        }
+
+        return type;
     }
 }

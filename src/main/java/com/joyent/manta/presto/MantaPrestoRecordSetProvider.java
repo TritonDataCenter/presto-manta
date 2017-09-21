@@ -58,6 +58,8 @@ public class MantaPrestoRecordSetProvider implements ConnectorRecordSetProvider 
             handles.add((MantaPrestoColumn) column);
         }
 
+
+
         return new MantaPrestoRecordSet(mantaPrestoSplit, handles.build(), mantaClient,
                 objectMapper);
     }

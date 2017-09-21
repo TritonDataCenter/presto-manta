@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.record.json.MantaPrestoJsonRecordCursor;
 
 import java.util.List;
 
@@ -54,6 +55,6 @@ public class MantaPrestoRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
-        return new MantaPrestoRecordCursor(columns, objectPath, mantaClient, objectMapper);
+        return new MantaPrestoJsonRecordCursor(columns, objectPath, mantaClient, objectMapper);
     }
 }

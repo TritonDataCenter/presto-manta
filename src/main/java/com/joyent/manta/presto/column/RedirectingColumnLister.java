@@ -7,18 +7,17 @@
  */
 package com.joyent.manta.presto.column;
 
-import com.facebook.presto.spi.ColumnMetadata;
-import com.google.common.io.Files;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.http.MantaHttpHeaders;
 import com.joyent.manta.presto.MantaPrestoFileType;
-import com.joyent.manta.presto.MantaPrestoUtils;
-import com.joyent.manta.presto.column.json.JsonFileColumnLister;
-import com.joyent.manta.presto.exceptions.*;
+import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
+import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
+import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
+import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
+import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
+import com.joyent.manta.presto.record.json.MantaPrestoJsonFileColumnLister;
 import com.joyent.manta.util.MantaUtils;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -45,7 +44,7 @@ public class RedirectingColumnLister {
 
     private final int maxBytesPerLine;
 
-    private final JsonFileColumnLister jsonLister;
+    private final MantaPrestoJsonFileColumnLister jsonLister;
 
     /**
      * Creates a new instance with the required properties.
@@ -58,7 +57,7 @@ public class RedirectingColumnLister {
     @Inject
     public RedirectingColumnLister(@Named("SchemaMapping") final Map<String, String> schemaMapping,
                                    @Named("MaxBytesPerLine") final Integer maxBytesPerLine,
-                                   final JsonFileColumnLister jsonLister,
+                                   final MantaPrestoJsonFileColumnLister jsonLister,
                                    final MantaClient mantaClient) {
         this.schemaMapping = requireNonNull(schemaMapping, "Schema mapping is null");
         this.maxBytesPerLine = requireNonNull(maxBytesPerLine, "Max bytes per line is null");
@@ -72,25 +71,19 @@ public class RedirectingColumnLister {
 
         String objectPath = objectPath(schemaName, tableName);
 
-        MantaObjectInputStream in = objectStream(objectPath);
         final String firstLine;
-        final String contentType;
+        final MantaPrestoFileType type;
 
-        try {
+        try (MantaObjectInputStream in = objectStream(objectPath)) {
             firstLine = readFirstLine(in);
-            contentType = in.getContentType();
-        } finally {
-            try {
-                in.abortConnection();
-            } catch (IOException e) {
-                LoggerFactory.getLogger(getClass())
-                        .info("Error aborting connection after reading first line", e);
-            }
+            type = MantaPrestoFileType.determineFileType(in);
+        } catch (IOException e) {
+            String msg = "Error reading first line of file object";
+            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
+            me.setContextValue("objectPath", objectPath);
+            throw me;
         }
 
-        final String extension = Files.getFileExtension(objectPath);
-        final String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(contentType);
-        final MantaPrestoFileType type = determineFileType(extension, mediaType, in);
         final ColumnLister lister;
 
         switch (type) {
@@ -106,32 +99,6 @@ public class RedirectingColumnLister {
         }
 
         return lister.listColumns(objectPath, type, firstLine);
-    }
-
-    /**
-     * Determines what {@link MantaPrestoFileType} is associated with
-     * an object via looking up metadata on its file extension or
-     * media type.
-     *
-     * @param extension file extension to query for an association
-     * @param mediaType media type to query for an association
-     * @param object object reference for debugging information
-     * @return instance of enum associated with object's file type
-     */
-    private MantaPrestoFileType determineFileType(final String extension,
-                                                  final String mediaType,
-                                                  final MantaObject object) {
-        if (MantaPrestoFileType.isSupportedFileTypeByExtension(extension)) {
-            return MantaPrestoFileType.valueByExtension(extension);
-        } else if (MantaPrestoFileType.isSupportFileTypeByMediaType(mediaType)) {
-            return MantaPrestoFileType.valueByMediaType(mediaType);
-        } else {
-            String msg = "Table name (Manta object) specified is not a "
-                    + "supported file type";
-            MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(object, me);
-            throw me;
-        }
     }
 
     /**

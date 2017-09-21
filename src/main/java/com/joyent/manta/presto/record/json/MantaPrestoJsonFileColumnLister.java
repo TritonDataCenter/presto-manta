@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package com.joyent.manta.presto.column.json;
+package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
@@ -35,11 +35,11 @@ import java.util.Map;
 /**
  *
  */
-public class JsonFileColumnLister implements ColumnLister {
+public class MantaPrestoJsonFileColumnLister implements ColumnLister {
     private final ObjectMapper mapper;
 
     @Inject
-    public JsonFileColumnLister(final ObjectMapper mapper) {
+    public MantaPrestoJsonFileColumnLister(final ObjectMapper mapper) {
         this.mapper = mapper;
     }
 

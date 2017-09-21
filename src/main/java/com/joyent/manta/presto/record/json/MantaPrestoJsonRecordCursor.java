@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package com.joyent.manta.presto;
+package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.Type;
@@ -18,6 +18,7 @@ import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
+import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.column.MantaPrestoColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
@@ -39,8 +40,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  *
  */
-public class MantaPrestoRecordCursor implements RecordCursor {
-    private static final Logger LOG = LoggerFactory.getLogger(MantaPrestoRecordCursor.class);
+public class MantaPrestoJsonRecordCursor implements RecordCursor {
+    private static final Logger LOG = LoggerFactory.getLogger(MantaPrestoJsonRecordCursor.class);
 
     private final ObjectMapper objectMapper;
 
@@ -56,10 +57,10 @@ public class MantaPrestoRecordCursor implements RecordCursor {
 
     private Map<Integer, JsonNode> row;
 
-    public MantaPrestoRecordCursor(final List<MantaPrestoColumn> columns,
-                                   final String objectPath,
-                                   final MantaClient mantaClient,
-                                   final ObjectMapper objectMapper) {
+    public MantaPrestoJsonRecordCursor(final List<MantaPrestoColumn> columns,
+                                       final String objectPath,
+                                       final MantaClient mantaClient,
+                                       final ObjectMapper objectMapper) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.objectMapper = objectMapper;
