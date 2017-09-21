@@ -12,7 +12,8 @@ import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
-import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
+import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import com.joyent.manta.presto.column.MantaPrestoColumn;
 
 /**
  *
@@ -30,11 +31,16 @@ public class MantaPrestoHandleResolver implements ConnectorHandleResolver {
 
     @Override
     public Class<? extends ColumnHandle> getColumnHandleClass() {
-        return MantaPrestoColumnHandle.class;
+        return MantaPrestoColumn.class;
     }
 
     @Override
     public Class<? extends ConnectorSplit> getSplitClass() {
         return MantaPrestoSplit.class;
+    }
+
+    @Override
+    public Class<? extends ConnectorTransactionHandle> getTransactionHandleClass() {
+        return MantaPrestoTransactionHandle.class;
     }
 }

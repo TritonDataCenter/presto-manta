@@ -38,9 +38,9 @@ public class JsonFileColumnLister implements ColumnLister {
     }
 
     @Override
-    public List<ColumnMetadata> listColumns(final String objectPath,
-                                            final MantaPrestoFileType fileType,
-                                            final String firstLine) {
+    public List<MantaPrestoColumn> listColumns(final String objectPath,
+                                               final MantaPrestoFileType fileType,
+                                               final String firstLine) {
         final JsonNode node;
 
         try {
@@ -64,7 +64,7 @@ public class JsonFileColumnLister implements ColumnLister {
 
         final ObjectNode objectNode = (ObjectNode)node;
 
-        ImmutableList.Builder<ColumnMetadata> columns = new ImmutableList.Builder<>();
+        ImmutableList.Builder<MantaPrestoColumn> columns = new ImmutableList.Builder<>();
 
         Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
 

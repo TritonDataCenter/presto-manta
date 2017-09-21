@@ -10,6 +10,7 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Objects;
 
@@ -17,16 +18,21 @@ import java.util.Objects;
  *
  */
 public class MantaPrestoTableLayoutHandle implements ConnectorTableLayoutHandle {
-    private final MantaPrestoTable table;
+    private final MantaPrestoSchemaTableName tableName;
 
     @JsonCreator
-    public MantaPrestoTableLayoutHandle(@JsonProperty("table") MantaPrestoTable table) {
-        this.table = table;
+    public MantaPrestoTableLayoutHandle(
+            @JsonProperty("tableName") final MantaPrestoSchemaTableName tableName) {
+        this.tableName = tableName;
     }
 
+    @JsonProperty
+    public MantaPrestoSchemaTableName getTableName() {
+        return tableName;
+    }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) {
             return true;
         }
@@ -36,16 +42,18 @@ public class MantaPrestoTableLayoutHandle implements ConnectorTableLayoutHandle 
 
         final MantaPrestoTableLayoutHandle that = (MantaPrestoTableLayoutHandle) o;
 
-        return Objects.equals(table, that.table);
+        return Objects.equals(tableName, that.tableName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(table);
+        return Objects.hash(tableName);
     }
 
     @Override
     public String toString() {
-        return table.toString();
+        return new ToStringBuilder(this)
+                .append("tableName", tableName)
+                .toString();
     }
 }

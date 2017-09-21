@@ -10,13 +10,11 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.type.Type;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.ByteSource;
-import com.google.common.io.Resources;
-import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
-import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
+import com.joyent.manta.client.MantaClient;
+import com.joyent.manta.presto.column.MantaPrestoColumn;
 
-import java.net.MalformedURLException;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -25,30 +23,28 @@ import static java.util.Objects.requireNonNull;
  *
  */
 public class MantaPrestoRecordSet implements RecordSet {
-    private final List<MantaPrestoColumnHandle> columnHandles;
+    private final List<MantaPrestoColumn> columns;
     private final List<Type> columnTypes;
-    private final ByteSource byteSource;
+    private final String objectPath;
+    private final MantaClient mantaClient;
+    private final ObjectMapper objectMapper;
 
     public MantaPrestoRecordSet(final MantaPrestoSplit split,
-                                final List<MantaPrestoColumnHandle> columnHandles) {
+                                final List<MantaPrestoColumn> columns,
+                                final MantaClient mantaClient,
+                                final ObjectMapper objectMapper) {
         requireNonNull(split, "split is null");
+        this.columns = requireNonNull(columns, "column handles is null");
+        this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
+        this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
 
-        this.columnHandles = requireNonNull(columnHandles, "column handles is null");
         ImmutableList.Builder<Type> types = ImmutableList.builder();
-        for (MantaPrestoColumnHandle column : columnHandles) {
-            types.add(column.getColumnType());
+        for (MantaPrestoColumn column : columns) {
+            types.add(column.getType());
         }
         this.columnTypes = types.build();
 
-        try {
-            byteSource = Resources.asByteSource(split.getUri().toURL());
-        } catch (MalformedURLException e) {
-            String msg = "Bad URL received from MantaPrestoSplit instance";
-            MantaPrestoRuntimeException re = new MantaPrestoRuntimeException(msg, e);
-            re.setContextValue("URL", split.getUri());
-
-            throw re;
-        }
+        this.objectPath = split.getObjectPath();
     }
 
     @Override
@@ -58,6 +54,6 @@ public class MantaPrestoRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
-        return new MantaPrestoRecordCursor(columnHandles, byteSource);
+        return new MantaPrestoRecordCursor(columns, objectPath, mantaClient, objectMapper);
     }
 }

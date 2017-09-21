@@ -16,7 +16,7 @@ import java.util.List;
  *
  */
 public interface ColumnLister {
-    List<ColumnMetadata> listColumns(final String objectPath,
-                                     final MantaPrestoFileType type,
-                                     final String firstLine);
+    List<MantaPrestoColumn> listColumns(final String objectPath,
+                                        final MantaPrestoFileType type,
+                                        final String firstLine);
 }

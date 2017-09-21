@@ -9,57 +9,75 @@ package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.Type;
-import com.google.common.base.Splitter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
-import com.google.common.io.ByteSource;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
-import com.joyent.manta.presto.column.MantaPrestoColumnHandle;
-import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
+import com.joyent.manta.client.MantaClient;
+import com.joyent.manta.client.MantaObjectInputStream;
+import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
+import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 
-import static com.facebook.presto.spi.type.BigintType.BIGINT;
-import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
-import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
-import static com.facebook.presto.spi.type.VarcharType.createUnboundedVarcharType;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  *
  */
 public class MantaPrestoRecordCursor implements RecordCursor {
-    private static final Splitter LINE_SPLITTER = Splitter.on(",").trimResults();
+    private static final Logger LOG = LoggerFactory.getLogger(MantaPrestoRecordCursor.class);
 
-    private final List<MantaPrestoColumnHandle> columnHandles;
-    private final int[] fieldToColumnIndex;
+    private final ObjectMapper objectMapper;
 
-    private final Iterator<String> lines;
+    private final List<MantaPrestoColumn> columns;
     private final long totalBytes;
-
+    private long lines = 0L;
+    private Long readTimeStartNanos = null;
     private List<String> fields;
 
-    public MantaPrestoRecordCursor(final List<MantaPrestoColumnHandle> columnHandles,
-                                   final ByteSource byteSource) {
-        this.columnHandles = columnHandles;
+    private final String objectPath;
+    private final CountingInputStream countingInputStream;
+    private final MantaObjectInputStream mantaObjectInputStream;
+    private final Scanner scanner;
 
-        fieldToColumnIndex = new int[columnHandles.size()];
-        for (int i = 0; i < columnHandles.size(); i++) {
-            MantaPrestoColumnHandle columnHandle = columnHandles.get(i);
-            fieldToColumnIndex[i] = columnHandle.getOrdinalPosition();
-        }
+    private Map<Integer, JsonNode> row;
 
-        try (CountingInputStream input = new CountingInputStream(byteSource.openStream())) {
-            lines = byteSource.asCharSource(UTF_8).readLines().iterator();
-            totalBytes = input.getCount();
+    public MantaPrestoRecordCursor(final List<MantaPrestoColumn> columns,
+                                   final String objectPath,
+                                   final MantaClient mantaClient,
+                                   final ObjectMapper objectMapper) {
+        this.columns = columns;
+        this.objectPath = objectPath;
+        this.objectMapper = objectMapper;
+
+        try {
+            this.mantaObjectInputStream = mantaClient.getAsInputStream(objectPath);
+            this.totalBytes = mantaObjectInputStream.getContentLength();
         } catch (IOException e) {
-            throw new MantaPrestoRuntimeException(e);
+            String msg = "There was a problem opening a connection to Manta";
+            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
+            me.addContextValue("objectPath", objectPath);
+            throw me;
         }
+
+        this.countingInputStream = new CountingInputStream(this.mantaObjectInputStream);
+        String contentType = mantaObjectInputStream.getContentType();
+        Charset charset = MantaPrestoUtils.parseCharset(contentType, UTF_8);
+        this.scanner = new Scanner(countingInputStream, charset.name());
     }
 
     @Override
@@ -69,79 +87,96 @@ public class MantaPrestoRecordCursor implements RecordCursor {
 
     @Override
     public long getCompletedBytes() {
-        return totalBytes;
+        return countingInputStream.getCount();
     }
 
     @Override
     public long getReadTimeNanos() {
-        return 0;
+        if (readTimeStartNanos == null) {
+            return 0L;
+        }
+
+        return Math.abs(readTimeStartNanos - System.nanoTime());
     }
 
     @Override
-    public Type getType(int field) {
-        checkArgument(field < columnHandles.size(), "Invalid field index");
-        return columnHandles.get(field).getColumnType();
+    public Type getType(final int field) {
+        checkArgument(field < columns.size(), "Invalid field index");
+        return columns.get(field).getType();
     }
 
     @Override
     public boolean advanceNextPosition() {
-        if (!lines.hasNext()) {
+        if (readTimeStartNanos == null) {
+            readTimeStartNanos = System.nanoTime();
+        }
+
+        if (!scanner.hasNextLine()) {
             return false;
         }
-        String line = lines.next();
-        fields = LINE_SPLITTER.splitToList(line);
+        String line = scanner.nextLine();
+        lines++;
+
+        try {
+            ObjectNode node = objectMapper.readValue(line, ObjectNode.class);
+            row = mapOrdinalToNode(node);
+        } catch (IOException e) {
+            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(e);
+            MantaPrestoExceptionUtils.annotateMantaObjectDetails(mantaObjectInputStream, me);
+            me.addContextValue("line", lines);
+
+            LOG.info("Unable to parse line", me);
+        }
 
         return true;
     }
 
-    private String getFieldValue(int field) {
-        checkState(fields != null, "Cursor has not been advanced yet");
-
-        int columnIndex = fieldToColumnIndex[field];
-        return fields.get(columnIndex);
+    @Override
+    public boolean getBoolean(final int field) {
+        return row.get(field).asBoolean();
     }
 
     @Override
-    public boolean getBoolean(int field) {
-        checkFieldType(field, BOOLEAN);
-        return Boolean.parseBoolean(getFieldValue(field));
+    public long getLong(final int field) {
+        return row.get(field).asLong();
     }
 
     @Override
-    public long getLong(int field) {
-        checkFieldType(field, BIGINT);
-        return Long.parseLong(getFieldValue(field));
+    public double getDouble(final int field) {
+        return row.get(field).asDouble();
     }
 
     @Override
-    public double getDouble(int field) {
-        checkFieldType(field, DOUBLE);
-        return Double.parseDouble(getFieldValue(field));
+    public Slice getSlice(final int field) {
+        return Slices.utf8Slice(row.get(field).asText());
     }
 
     @Override
-    public Slice getSlice(int field) {
-        checkFieldType(field, createUnboundedVarcharType());
-        return Slices.utf8Slice(getFieldValue(field));
-    }
-
-    @Override
-    public Object getObject(int field) {
+    public Object getObject(final int field) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean isNull(int field) {
-        checkArgument(field < columnHandles.size(), "Invalid field index");
-        return Strings.isNullOrEmpty(getFieldValue(field));
-    }
+    public boolean isNull(final int field) {
+        checkArgument(field < columns.size(), "Invalid field index");
 
-    private void checkFieldType(int field, Type expected) {
-        Type actual = getType(field);
-        checkArgument(actual.equals(expected), "Expected field %s to be type %s but is %s", field, expected, actual);
+        return row.get(field).isNull() || Strings.isNullOrEmpty(row.get(field).asText());
     }
 
     @Override
     public void close() {
+        Closeables.closeQuietly(countingInputStream);
+        Closeables.closeQuietly(mantaObjectInputStream);
+    }
+
+    private static Map<Integer, JsonNode> mapOrdinalToNode(final ObjectNode object) {
+        ImmutableMap.Builder<Integer, JsonNode> map = new ImmutableMap.Builder<>();
+
+        int count = 0;
+        for (JsonNode node : object) {
+            map.put(count++, node);
+        }
+
+        return map.build();
     }
 }

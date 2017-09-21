@@ -12,6 +12,7 @@ import com.google.common.io.Files;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.client.MantaObjectInputStream;
+import com.joyent.manta.http.MantaHttpHeaders;
 import com.joyent.manta.presto.MantaPrestoFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.column.json.JsonFileColumnLister;
@@ -42,25 +43,30 @@ public class RedirectingColumnLister {
      */
     private final MantaClient mantaClient;
 
+    private final int maxBytesPerLine;
+
     private final JsonFileColumnLister jsonLister;
 
     /**
      * Creates a new instance with the required properties.
      *
      * @param schemaMapping map relating configured schema name to Manta directory path
+     * @param maxBytesPerLine maximum number of bytes to read per line
      * @param jsonLister lister instance for processing JSON columns
      * @param mantaClient Manta client instance
      */
     @Inject
     public RedirectingColumnLister(@Named("SchemaMapping") final Map<String, String> schemaMapping,
+                                   @Named("MaxBytesPerLine") final Integer maxBytesPerLine,
                                    final JsonFileColumnLister jsonLister,
                                    final MantaClient mantaClient) {
-        this.schemaMapping = schemaMapping;
-        this.jsonLister = jsonLister;
-        this.mantaClient = mantaClient;
+        this.schemaMapping = requireNonNull(schemaMapping, "Schema mapping is null");
+        this.maxBytesPerLine = requireNonNull(maxBytesPerLine, "Max bytes per line is null");
+        this.jsonLister = requireNonNull(jsonLister, "Json lister is null");
+        this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
     }
 
-    public List<ColumnMetadata> listColumns(final String schemaName, final String tableName) {
+    public List<MantaPrestoColumn> listColumns(final String schemaName, final String tableName) {
         requireNonNull(schemaName, "Schema name is null");
         requireNonNull(tableName, "Table name is null");
 
@@ -158,7 +164,9 @@ public class RedirectingColumnLister {
         MantaObjectInputStream in = null;
 
         try {
-            return mantaClient.getAsInputStream(objectPath);
+            MantaHttpHeaders headers = new MantaHttpHeaders();
+            headers.setRange(String.format("bytes=0-%d", maxBytesPerLine));
+            return mantaClient.getAsInputStream(objectPath, headers);
         } catch (IOException e) {
             String msg = "Problem opening InputStream to Manta object";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);

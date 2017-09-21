@@ -26,12 +26,14 @@ import com.joyent.manta.presto.column.ColumnLister;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.column.json.JsonFileColumnLister;
 import com.joyent.manta.util.MantaUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static com.joyent.manta.client.MantaClient.SEPARATOR;
 import static io.airlift.json.JsonBinder.jsonBinder;
@@ -47,12 +49,20 @@ public class MantaPrestoModule implements Module {
     /**
      * Logger instance.
      */
-    private final static Logger log = LoggerFactory.getLogger(MantaPrestoModule.class);
+    private static final Logger log = LoggerFactory.getLogger(MantaPrestoModule.class);
+
+    /**
+     * Default maximum number of bytes per line is 10k.
+     */
+    private static final int DEFAULT_MAX_BYTES_PER_LINE = 10_240;
+
+    private static final String MAX_BYTES_PER_LINE_KEY = "manta.max_bytes_per_line";
 
     private final String connectorId;
     private final TypeManager typeManager;
     private final ConfigContext config;
     private final Map<String, String> schemaMapping = new HashMap<>();
+    private final Integer maxBytesPerLine;
 
     public MantaPrestoModule(final String connectorId,
                              final TypeManager typeManager,
@@ -61,7 +71,14 @@ public class MantaPrestoModule implements Module {
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
 
         requireNonNull(configParams, "Configuration is null");
+
         this.config = buildConfigContext(configParams);
+
+        if (configParams.containsKey(MAX_BYTES_PER_LINE_KEY)) {
+            maxBytesPerLine = Integer.parseInt(configParams.get(MAX_BYTES_PER_LINE_KEY));
+        } else {
+            maxBytesPerLine = DEFAULT_MAX_BYTES_PER_LINE;
+        }
 
         log.debug("Manta Configuration: {}", this.config);
     }
@@ -141,6 +158,10 @@ public class MantaPrestoModule implements Module {
                 .annotatedWith(Names.named("SchemaMapping"))
                 .toInstance(ImmutableMap.copyOf(schemaMapping));
 
+        binder.bind(Integer.class)
+                .annotatedWith(Names.named("MaxBytesPerLine"))
+                .toInstance(maxBytesPerLine);
+
         binder.bind(TypeManager.class).toInstance(typeManager);
 
         binder.bind(ConfigContext.class).toInstance(this.config);
@@ -150,11 +171,9 @@ public class MantaPrestoModule implements Module {
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(JsonFileColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoMetadata.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoClient.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(MantaPrestoRecordSetProvider.class).in(Scopes.SINGLETON);
 
         jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaPrestoTypeDeserializer.class);
-        jsonCodecBinder(binder).bindMapJsonCodec(String.class, listJsonCodec(MantaPrestoTable.class));
     }
 }

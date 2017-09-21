@@ -12,6 +12,7 @@ import com.facebook.presto.spi.HostAddress;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import com.joyent.manta.http.ShufflingDnsResolver;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.net.URI;
@@ -26,21 +27,17 @@ public class MantaPrestoSplit implements ConnectorSplit {
     private final String connectorId;
     private final String schemaName;
     private final String tableName;
-    private final URI uri;
-    private final List<HostAddress> addresses;
+    private final String objectPath;
 
     @JsonCreator
-    public MantaPrestoSplit(
-            @JsonProperty("connectorId") String connectorId,
-            @JsonProperty("schemaName") String schemaName,
-            @JsonProperty("tableName") String tableName,
-            @JsonProperty("uri") URI uri) {
+    public MantaPrestoSplit(@JsonProperty("connectorId") final String connectorId,
+                            @JsonProperty("schemaName") final String schemaName,
+                            @JsonProperty("tableName") final String tableName,
+                            @JsonProperty("objectPath") final String objectPath) {
         this.schemaName = requireNonNull(schemaName, "schema name is null");
         this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.tableName = requireNonNull(tableName, "table name is null");
-        this.uri = requireNonNull(uri, "uri is null");
-
-        addresses = ImmutableList.of(HostAddress.fromUri(uri));
+        this.objectPath = requireNonNull(objectPath, "object path is null");
     }
 
     @JsonProperty
@@ -59,10 +56,11 @@ public class MantaPrestoSplit implements ConnectorSplit {
     }
 
     @JsonProperty
-    public URI getUri() {
-        return uri;
+    public String getObjectPath() {
+        return objectPath;
     }
 
+    @JsonProperty
     @Override
     public boolean isRemotelyAccessible() {
         return true;
@@ -70,7 +68,7 @@ public class MantaPrestoSplit implements ConnectorSplit {
 
     @Override
     public List<HostAddress> getAddresses() {
-        return addresses;
+        throw new UnsupportedOperationException("get Addresses is not supported");
     }
 
     @Override
@@ -84,8 +82,7 @@ public class MantaPrestoSplit implements ConnectorSplit {
                 .append("connectorId", connectorId)
                 .append("schemaName", schemaName)
                 .append("tableName", tableName)
-                .append("uri", uri)
-                .append("addresses", addresses)
+                .append("objectPath", objectPath)
                 .toString();
     }
 }

@@ -9,8 +9,10 @@ package com.joyent.manta.presto.column;
 
 import com.google.common.net.MediaType;
 import com.joyent.manta.client.MantaObjectInputStream;
+import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoFileFormatException;
+import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +28,6 @@ import java.util.Scanner;
  * then aborts the connection on close().
  */
 public class FirstLinePeeker {
-    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
-
     private final MantaObjectInputStream inputStream;
 
     public FirstLinePeeker(final MantaObjectInputStream inputStream) {
@@ -39,7 +39,8 @@ public class FirstLinePeeker {
         String line;
         long count = 1;
 
-        try (Scanner scanner = new Scanner(inputStream, parseCharset().name())) {
+        try (Scanner scanner = new Scanner(inputStream, MantaPrestoUtils.parseCharset(
+                inputStream.getContentType(), StandardCharsets.UTF_8).name())) {
             line = scanner.nextLine();
 
             // Skip blank lines
@@ -66,21 +67,5 @@ public class FirstLinePeeker {
         }
 
         return line;
-    }
-
-    private Charset parseCharset() {
-        String contentType = inputStream.getHttpHeaders().getContentType();
-
-        if (StringUtils.isBlank(contentType)) {
-            return DEFAULT_CHARSET;
-        }
-
-        try {
-            return MediaType.parse(contentType).charset().or(DEFAULT_CHARSET);
-        } catch (IllegalArgumentException e) {
-            LoggerFactory.getLogger(getClass())
-                    .warn("Illegal character set on content-type: {}", contentType);
-            return DEFAULT_CHARSET;
-        }
     }
 }

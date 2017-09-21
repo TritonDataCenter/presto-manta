@@ -10,6 +10,8 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
@@ -24,10 +26,11 @@ public class MantaPrestoSchemaTableName extends SchemaTableName
     private final String directory;
     private final String relativeFilePath;
 
-    public MantaPrestoSchemaTableName(final String schemaName,
-                                      final String tableName,
-                                      final String directory,
-                                      final String relativeFilePath) {
+    @JsonCreator
+    public MantaPrestoSchemaTableName(@JsonProperty("schema") final String schemaName,
+                                      @JsonProperty("table") final String tableName,
+                                      @JsonProperty("directory") final String directory,
+                                      @JsonProperty("relativeFilePath") final String relativeFilePath) {
         super(schemaName, tableName);
         this.directory = directory;
         this.relativeFilePath = relativeFilePath;
@@ -38,10 +41,12 @@ public class MantaPrestoSchemaTableName extends SchemaTableName
         return new SchemaTablePrefix(directory, relativeFilePath);
     }
 
+    @JsonProperty
     public String getDirectory() {
         return directory;
     }
 
+    @JsonProperty
     public String getRelativeFilePath() {
         return relativeFilePath;
     }

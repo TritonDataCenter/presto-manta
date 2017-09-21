@@ -14,18 +14,44 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
-import java.util.Objects;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Strings.isNullOrEmpty;
-import static java.util.Objects.requireNonNull;
-
 /**
  *
  */
 public class MantaPrestoColumn extends ColumnMetadata implements ColumnHandle {
-    public MantaPrestoColumn(final String name, final Type type, final String extraInfo) {
+    @JsonCreator
+    public MantaPrestoColumn(@JsonProperty("name") final String name,
+                             @JsonProperty("type") final Type type,
+                             @JsonProperty("extraInfo") final String extraInfo) {
         super(name, type, null, extraInfo, false);
+    }
+
+    @JsonProperty
+    @Override
+    public String getName() {
+        return super.getName();
+    }
+
+    @JsonProperty
+    @Override
+    public Type getType() {
+        return super.getType();
+    }
+
+    @JsonProperty
+    @Override
+    public String getComment() {
+        return super.getComment();
+    }
+
+    @JsonProperty
+    @Override
+    public String getExtraInfo() {
+        return super.getExtraInfo();
+    }
+
+    @Override
+    public boolean isHidden() {
+        return super.isHidden();
     }
 
     @Override

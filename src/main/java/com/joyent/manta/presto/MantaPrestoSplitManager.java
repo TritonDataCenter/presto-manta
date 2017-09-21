@@ -14,6 +14,8 @@ import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.FixedSplitSource;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import com.google.common.collect.ImmutableList;
+import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -26,30 +28,30 @@ import static java.util.Objects.requireNonNull;
  */
 public class MantaPrestoSplitManager implements ConnectorSplitManager {
     private final String connectorId;
-    private final MantaPrestoClient MantaPrestoClient;
 
     @Inject
-    public MantaPrestoSplitManager(final MantaPrestoConnectorId connectorId,
-                                   final MantaPrestoClient MantaPrestoClient) {
+    public MantaPrestoSplitManager(final MantaPrestoConnectorId connectorId) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
-        this.MantaPrestoClient = requireNonNull(MantaPrestoClient, "client is null");
     }
 
     @Override
     public ConnectorSplitSource getSplits(final ConnectorTransactionHandle handle,
                                           final ConnectorSession session,
                                           final ConnectorTableLayoutHandle layout) {
-        MantaPrestoTableLayoutHandle layoutHandle = (MantaPrestoTableLayoutHandle) layout;
-//        MantaPrestoSchemaTableName tableHandle = layoutHandle.getTable();
-//        MantaPrestoTable table = MantaPrestoClient.getTable(tableHandle.getSchemaName(), tableHandle.getTableName());
+        if (!layout.getClass().equals(MantaPrestoTableLayoutHandle.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaPrestoTableLayoutHandle.class,
+                    handle.getClass());
+        }
 
+        MantaPrestoTableLayoutHandle layoutHandle = (MantaPrestoTableLayoutHandle)layout;
+        MantaPrestoSchemaTableName tableName = layoutHandle.getTableName();
 
-        List<ConnectorSplit> splits = new ArrayList<>();
-//        for (URI uri : table.getSources()) {
-//            splits.add(new MantaPrestoSplit(connectorId, tableHandle.getSchemaName(), tableHandle.getTableName(), uri));
-//        }
-//        Collections.shuffle(splits);
+        MantaPrestoSplit split = new MantaPrestoSplit(connectorId,
+                tableName.getSchemaName(), tableName.getTableName(),
+                tableName.getObjectPath());
 
-        return new FixedSplitSource(splits);
+        // TODO: We only map one table to one file for now
+
+        return new FixedSplitSource(ImmutableList.of(split));
     }
 }

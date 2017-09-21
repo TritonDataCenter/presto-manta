@@ -13,5 +13,5 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
  *
  */
 public enum MantaPrestoTransactionHandle implements ConnectorTransactionHandle {
-    INSTANCE
+    INSTANCE;
 }
