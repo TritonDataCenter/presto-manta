@@ -16,11 +16,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
-import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.client.MantaObjectInputStream;
-import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.column.MantaPrestoColumn;
-import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import io.airlift.slice.Slice;
@@ -35,7 +31,6 @@ import java.util.Map;
 import java.util.Scanner;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  *
@@ -51,34 +46,23 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
     private Long readTimeStartNanos = null;
 
     private final String objectPath;
-    private final CountingInputStream countingInputStream;
-    private final MantaObjectInputStream mantaObjectInputStream;
+    private final CountingInputStream countingStream;
     private final Scanner scanner;
 
     private Map<Integer, JsonNode> row;
 
     public MantaPrestoJsonRecordCursor(final List<MantaPrestoColumn> columns,
                                        final String objectPath,
-                                       final MantaClient mantaClient,
+                                       final long totalBytes,
+                                       final CountingInputStream countingStream,
+                                       final Charset charset,
                                        final ObjectMapper objectMapper) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.objectMapper = objectMapper;
-
-        try {
-            this.mantaObjectInputStream = mantaClient.getAsInputStream(objectPath);
-            this.totalBytes = mantaObjectInputStream.getContentLength();
-        } catch (IOException e) {
-            String msg = "There was a problem opening a connection to Manta";
-            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
-            me.addContextValue("objectPath", objectPath);
-            throw me;
-        }
-
-        this.countingInputStream = new CountingInputStream(this.mantaObjectInputStream);
-        String contentType = mantaObjectInputStream.getContentType();
-        Charset charset = MantaPrestoUtils.parseCharset(contentType, UTF_8);
-        this.scanner = new Scanner(countingInputStream, charset.name());
+        this.totalBytes = totalBytes;
+        this.countingStream = countingStream;
+        this.scanner = new Scanner(this.countingStream, charset.name());
     }
 
     @Override
@@ -88,7 +72,7 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
 
     @Override
     public long getCompletedBytes() {
-        return countingInputStream.getCount();
+        return countingStream.getCount();
     }
 
     @Override
@@ -123,7 +107,7 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
             row = mapOrdinalToNode(node);
         } catch (IOException e) {
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(e);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(mantaObjectInputStream, me);
+            me.setContextValue("objectPath", objectPath);
             me.addContextValue("line", lines);
 
             LOG.info("Unable to parse line", me);
@@ -198,8 +182,8 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
 
     @Override
     public void close() {
-        Closeables.closeQuietly(countingInputStream);
-        Closeables.closeQuietly(mantaObjectInputStream);
+        scanner.close();
+        Closeables.closeQuietly(countingStream);
     }
 
     private Map<Integer, JsonNode> mapOrdinalToNode(final ObjectNode object) {
