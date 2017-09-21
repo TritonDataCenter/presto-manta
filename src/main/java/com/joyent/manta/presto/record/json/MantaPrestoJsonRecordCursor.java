@@ -10,6 +10,7 @@ package com.joyent.manta.presto.record.json;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
@@ -18,6 +19,7 @@ import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.presto.column.MantaPrestoColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
+import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
@@ -25,10 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -47,7 +47,7 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
 
     private final String objectPath;
     private final CountingInputStream countingStream;
-    private final Scanner scanner;
+    private final MappingIterator<ObjectNode> lineItr;
 
     private Map<Integer, JsonNode> row;
 
@@ -55,14 +55,21 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
                                        final String objectPath,
                                        final long totalBytes,
                                        final CountingInputStream countingStream,
-                                       final Charset charset,
                                        final ObjectMapper objectMapper) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.objectMapper = objectMapper;
         this.totalBytes = totalBytes;
         this.countingStream = countingStream;
-        this.scanner = new Scanner(this.countingStream, charset.name());
+
+        try {
+            this.lineItr = objectMapper.readerFor(ObjectNode.class).readValues(countingStream);
+        } catch (IOException e) {
+            String msg = "Unable to create a line iterator JSON parser";
+            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
+            me.setContextValue("objectPath", objectPath);
+            throw me;
+        }
     }
 
     @Override
@@ -96,17 +103,17 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
             readTimeStartNanos = System.nanoTime();
         }
 
-        if (!scanner.hasNextLine()) {
+        if (!lineItr.hasNext()) {
             return false;
         }
-        String line = scanner.nextLine();
+
         lines++;
 
         try {
-            ObjectNode node = objectMapper.readValue(line, ObjectNode.class);
+            ObjectNode node = lineItr.next();
             row = mapOrdinalToNode(node);
-        } catch (IOException e) {
-            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(e);
+        } catch (RuntimeException e) {
+            MantaPrestoRuntimeException me = new MantaPrestoRuntimeException(e);
             me.setContextValue("objectPath", objectPath);
             me.addContextValue("line", lines);
 
@@ -182,7 +189,12 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
 
     @Override
     public void close() {
-        scanner.close();
+        try {
+            lineItr.close();
+        } catch (IOException e) {
+            LOG.info("Error closing JSON line parser", e);
+        }
+
         Closeables.closeQuietly(countingStream);
     }
 

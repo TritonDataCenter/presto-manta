@@ -49,13 +49,13 @@ public class MantaPrestoTestUtils {
 
     static final String MANTA_KEY_ID = "ac:95:92:ff:88:f7:3d:cd:ba:23:7b:54:44:21:60:02";
 
-    static final Map<String, String> UNIT_TEST_CONFIG = ImmutableMap.of(
+    public static final Map<String, String> UNIT_TEST_CONFIG = ImmutableMap.of(
             "manta.key_content", MantaPrestoTestUtils.MANTA_AUTH_PRIVATE_KEY,
             "manta.key_id", MantaPrestoTestUtils.MANTA_KEY_ID,
             "manta.user", "unit-test"
             );
 
-    static Injector createInjectorInstance(final Map<String, String> config) {
+    public static Injector createInjectorInstance(final Map<String, String> config) {
         String connectorId = String.format("test-%s", UUID.randomUUID());
         ConnectorContext context = mock(ConnectorContext.class);
         TypeManager typeManager = mock(TypeManager.class);

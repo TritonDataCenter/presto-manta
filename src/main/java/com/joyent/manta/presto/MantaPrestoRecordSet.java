@@ -22,10 +22,8 @@ import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaPrestoJsonRecordCursor;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.List;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -74,8 +72,6 @@ public class MantaPrestoRecordSet implements RecordSet {
             throw me;
         }
 
-        String contentType = in.getContentType();
-        Charset charset = MantaPrestoUtils.parseCharset(contentType, UTF_8);
         long totalBytes = in.getContentLength();
         CountingInputStream cin = new CountingInputStream(in);
 
@@ -84,7 +80,7 @@ public class MantaPrestoRecordSet implements RecordSet {
         switch (type) {
             case LDJSON:
                 return new MantaPrestoJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin, charset, objectMapper);
+                        totalBytes, cin, objectMapper);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);

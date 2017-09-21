@@ -119,7 +119,7 @@ public class MantaPrestoJsonFileColumnLister implements ColumnLister {
                     extraInfo = "number";
                     break;
                 case OBJECT:
-                    type = new JsonType();
+                    type = JsonType.JSON;
                     extraInfo = "jsonObject";
                     break;
                 case POJO:
