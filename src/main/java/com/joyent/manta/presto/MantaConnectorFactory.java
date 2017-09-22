@@ -25,7 +25,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Class the provides Connector instances configured for use with Manta.
  */
-public class MantaPrestoConnectorFactory implements ConnectorFactory {
+public class MantaConnectorFactory implements ConnectorFactory {
     @Override
     public String getName() {
         return "manta";
@@ -33,7 +33,7 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
 
     @Override
     public ConnectorHandleResolver getHandleResolver() {
-        return new MantaPrestoHandleResolver();
+        return new MantaHandleResolver();
     }
 
     static Injector buildInjector(final String connectorId,
@@ -44,7 +44,7 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
         // A plugin is not required to use Guice; it is just very convenient
         Bootstrap app = new Bootstrap(
                 new JsonModule(),
-                new MantaPrestoModule(connectorId, context.getTypeManager(), config));
+                new MantaModule(connectorId, context.getTypeManager(), config));
 
         return app
                 .doNotInitializeLogging()
@@ -57,7 +57,7 @@ public class MantaPrestoConnectorFactory implements ConnectorFactory {
                             final ConnectorContext context) {
         try {
             Injector injector = buildInjector(connectorId, config, context);
-            return injector.getInstance(MantaPrestoConnector.class);
+            return injector.getInstance(MantaConnector.class);
         }
         catch (Exception e) {
             final String msg = "Error creating new connector";

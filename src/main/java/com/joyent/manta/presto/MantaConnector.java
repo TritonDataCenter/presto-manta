@@ -28,24 +28,24 @@ import static java.util.Objects.requireNonNull;
  * means to connect to Manta within the Presto API. This class must be shutdown
  * when it is no longer in use.
  */
-public class MantaPrestoConnector implements Connector {
+public class MantaConnector implements Connector {
     /**
      * Logger instance.
      */
-    private static final Logger log = LoggerFactory.getLogger(MantaPrestoConnector.class);
+    private static final Logger log = LoggerFactory.getLogger(MantaConnector.class);
 
     private final LifeCycleManager lifeCycleManager;
-    private final MantaPrestoMetadata metadata;
-    private final MantaPrestoSplitManager splitManager;
-    private final MantaPrestoRecordSetProvider recordSetProvider;
+    private final MantaMetadata metadata;
+    private final MantaSplitManager splitManager;
+    private final MantaRecordSetProvider recordSetProvider;
     private final MantaClient mantaClient;
 
     @Inject
-    public MantaPrestoConnector(final LifeCycleManager lifeCycleManager,
-                                final MantaPrestoMetadata metadata,
-                                final MantaPrestoSplitManager splitManager,
-                                final MantaPrestoRecordSetProvider recordSetProvider,
-                                final MantaClient mantaClient) {
+    public MantaConnector(final LifeCycleManager lifeCycleManager,
+                          final MantaMetadata metadata,
+                          final MantaSplitManager splitManager,
+                          final MantaRecordSetProvider recordSetProvider,
+                          final MantaClient mantaClient) {
         this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.splitManager = requireNonNull(splitManager, "splitManager is null");
@@ -56,7 +56,7 @@ public class MantaPrestoConnector implements Connector {
     @Override
     public ConnectorTransactionHandle beginTransaction(final IsolationLevel isolationLevel,
                                                        final boolean readOnly) {
-        return MantaPrestoTransactionHandle.INSTANCE;
+        return MantaTransactionHandle.INSTANCE;
     }
 
     @Override

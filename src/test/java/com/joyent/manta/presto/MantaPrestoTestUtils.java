@@ -62,7 +62,7 @@ public class MantaPrestoTestUtils {
         when(context.getTypeManager()).thenReturn(typeManager);
 
         try {
-            return MantaPrestoConnectorFactory.buildInjector(
+            return MantaConnectorFactory.buildInjector(
                     connectorId, config, context);
         } catch (Exception e) {
             throw new RuntimeException(e);

@@ -16,7 +16,7 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.inject.Inject;
@@ -27,15 +27,15 @@ import static java.util.Objects.requireNonNull;
 /**
  *
  */
-public class MantaPrestoRecordSetProvider implements ConnectorRecordSetProvider {
+public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
     private final String connectorId;
     private final MantaClient mantaClient;
     private final ObjectMapper objectMapper;
 
     @Inject
-    public MantaPrestoRecordSetProvider(final MantaPrestoConnectorId connectorId,
-                                        final MantaClient mantaClient,
-                                        final ObjectMapper objectMapper) {
+    public MantaRecordSetProvider(final MantaConnectorId connectorId,
+                                  final MantaClient mantaClient,
+                                  final ObjectMapper objectMapper) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
         this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
@@ -47,20 +47,20 @@ public class MantaPrestoRecordSetProvider implements ConnectorRecordSetProvider 
                                   final ConnectorSplit split,
                                   final List<? extends ColumnHandle> columns) {
         requireNonNull(split, "partitionChunk is null");
-        MantaPrestoSplit mantaPrestoSplit = (MantaPrestoSplit) split;
+        MantaSplit mantaSplit = (MantaSplit) split;
 
-        if (!mantaPrestoSplit.getConnectorId().equals(connectorId)) {
+        if (!mantaSplit.getConnectorId().equals(connectorId)) {
             throw new IllegalArgumentException("split is not for this connector");
         }
 
-        ImmutableList.Builder<MantaPrestoColumn> handles = ImmutableList.builder();
+        ImmutableList.Builder<MantaColumn> handles = ImmutableList.builder();
         for (ColumnHandle column : columns) {
-            handles.add((MantaPrestoColumn) column);
+            handles.add((MantaColumn) column);
         }
 
 
 
-        return new MantaPrestoRecordSet(mantaPrestoSplit, handles.build(), mantaClient,
+        return new MantaRecordSet(mantaSplit, handles.build(), mantaClient,
                 objectMapper);
     }
 

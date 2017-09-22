@@ -21,11 +21,11 @@ import static java.util.Objects.requireNonNull;
 /**
  *
  */
-public class MantaPrestoTypeDeserializer extends FromStringDeserializer<Type> {
+public class MantaTypeDeserializer extends FromStringDeserializer<Type> {
     private final TypeManager typeManager;
 
     @Inject
-    public MantaPrestoTypeDeserializer(final TypeManager typeManager) {
+    public MantaTypeDeserializer(final TypeManager typeManager) {
         super(Type.class);
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
     }

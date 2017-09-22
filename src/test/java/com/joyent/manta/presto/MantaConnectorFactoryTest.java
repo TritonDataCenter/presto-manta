@@ -19,7 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @Test
-public class MantaPrestoConnectorFactoryTest {
+public class MantaConnectorFactoryTest {
 
     public void canCreateNewConnector() {
         String connectorId = String.format("inject-test-id-%s", UUID.randomUUID());
@@ -27,7 +27,7 @@ public class MantaPrestoConnectorFactoryTest {
         TypeManager typeManager = mock(TypeManager.class);
         when(context.getTypeManager()).thenReturn(typeManager);
 
-        MantaPrestoConnectorFactory connectorFactory = new MantaPrestoConnectorFactory();
+        MantaConnectorFactory connectorFactory = new MantaConnectorFactory();
         Connector connector = connectorFactory.create(
                 connectorId, MantaPrestoTestUtils.UNIT_TEST_CONFIG, context);
         Assert.assertNotNull(connector);

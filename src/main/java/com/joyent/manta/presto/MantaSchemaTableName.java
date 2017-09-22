@@ -21,16 +21,16 @@ import static com.joyent.manta.client.MantaClient.SEPARATOR;
  * A Manta Presto specific implementation of {@link SchemaTableName} that
  * preserves the directory path structure with case sensitivity.
  */
-public class MantaPrestoSchemaTableName extends SchemaTableName
+public class MantaSchemaTableName extends SchemaTableName
         implements ConnectorTableHandle {
     private final String directory;
     private final String relativeFilePath;
 
     @JsonCreator
-    public MantaPrestoSchemaTableName(@JsonProperty("schema") final String schemaName,
-                                      @JsonProperty("table") final String tableName,
-                                      @JsonProperty("directory") final String directory,
-                                      @JsonProperty("relativeFilePath") final String relativeFilePath) {
+    public MantaSchemaTableName(@JsonProperty("schema") final String schemaName,
+                                @JsonProperty("table") final String tableName,
+                                @JsonProperty("directory") final String directory,
+                                @JsonProperty("relativeFilePath") final String relativeFilePath) {
         super(schemaName, tableName);
         this.directory = directory;
         this.relativeFilePath = relativeFilePath;
@@ -68,7 +68,7 @@ public class MantaPrestoSchemaTableName extends SchemaTableName
         }
         if (!super.equals(o)) return false;
 
-        final MantaPrestoSchemaTableName that = (MantaPrestoSchemaTableName) o;
+        final MantaSchemaTableName that = (MantaSchemaTableName) o;
         return Objects.equals(directory, that.directory)
                && Objects.equals(relativeFilePath, that.relativeFilePath);
     }

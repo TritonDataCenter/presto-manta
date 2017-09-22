@@ -24,7 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.exception.MantaClientHttpResponseException;
 import com.joyent.manta.exception.MantaErrorCode;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
@@ -58,7 +58,7 @@ import static java.util.Objects.requireNonNull;
  *  <tr><td>Column</td><td>Line within file</td></tr>
  * </table>
  */
-public class MantaPrestoMetadata implements ConnectorMetadata {
+public class MantaMetadata implements ConnectorMetadata {
     /**
      * Logger instance.
      */
@@ -74,10 +74,10 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
     private final ObjectToTableDirectoryListingFilter tableListingFilter;
 
     @Inject
-    public MantaPrestoMetadata(final MantaPrestoConnectorId connectorId,
-                               final RedirectingColumnLister columnLister,
-                               @Named("SchemaMapping") final Map<String, String> schemaMapping,
-                               final MantaClient mantaClient) {
+    public MantaMetadata(final MantaConnectorId connectorId,
+                         final RedirectingColumnLister columnLister,
+                         @Named("SchemaMapping") final Map<String, String> schemaMapping,
+                         final MantaClient mantaClient) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
         this.columnLister = requireNonNull(columnLister, "column lister is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client instance is null");
@@ -118,7 +118,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
                         String cleanRelativePath = StringUtils.stripStart(
                                 relativePath, MantaClient.SEPARATOR);
 
-                        return new MantaPrestoSchemaTableName(
+                        return new MantaSchemaTableName(
                                 schemaName, cleanRelativePath,
                                 directory, cleanRelativePath);
                     })
@@ -149,10 +149,10 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
     @Override
     public ConnectorTableHandle getTableHandle(final ConnectorSession session,
                                                final SchemaTableName tableName) {
-        final MantaPrestoSchemaTableName mantaTableName;
+        final MantaSchemaTableName mantaTableName;
 
-        if (tableName.getClass().equals(MantaPrestoSchemaTableName.class)) {
-            mantaTableName = (MantaPrestoSchemaTableName)tableName;
+        if (tableName.getClass().equals(MantaSchemaTableName.class)) {
+            mantaTableName = (MantaSchemaTableName)tableName;
         } else {
             String directory = schemaMapping.get(tableName.getSchemaName());
 
@@ -162,7 +162,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             }
 
             // TODO: This probably won't work - let's find out if it is needed
-            mantaTableName = new MantaPrestoSchemaTableName(tableName.getSchemaName(),
+            mantaTableName = new MantaSchemaTableName(tableName.getSchemaName(),
                     tableName.getTableName(), directory, tableName.getTableName());
         }
 
@@ -179,26 +179,26 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             final ConnectorTableHandle table,
             final Constraint<ColumnHandle> constraint,
             final Optional<Set<ColumnHandle>> desiredColumns) {
-        if (!table.getClass().equals(MantaPrestoSchemaTableName.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaPrestoSchemaTableName.class,
+        if (!table.getClass().equals(MantaSchemaTableName.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
                     table.getClass());
         }
 
-        MantaPrestoSchemaTableName tableName = (MantaPrestoSchemaTableName)table;
+        MantaSchemaTableName tableName = (MantaSchemaTableName)table;
 
-        ConnectorTableLayout layout = new ConnectorTableLayout(new MantaPrestoTableLayoutHandle(tableName));
+        ConnectorTableLayout layout = new ConnectorTableLayout(new MantaTableLayoutHandle(tableName));
         return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
     }
 
     @Override
     public ConnectorTableLayout getTableLayout(final ConnectorSession session,
                                                final ConnectorTableLayoutHandle handle) {
-        if (!handle.getClass().equals(MantaPrestoTableLayoutHandle.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaPrestoSchemaTableName.class,
+        if (!handle.getClass().equals(MantaTableLayoutHandle.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
                     handle.getClass());
         }
 
-        MantaPrestoTableLayoutHandle tableHandle = (MantaPrestoTableLayoutHandle)handle;
+        MantaTableLayoutHandle tableHandle = (MantaTableLayoutHandle)handle;
         ConnectorTableLayout layout = new ConnectorTableLayout(tableHandle);
 
         return layout;
@@ -207,12 +207,12 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
     @Override
     public ConnectorTableMetadata getTableMetadata(final ConnectorSession session,
                                                    final ConnectorTableHandle tableHandle) {
-        if (!tableHandle.getClass().equals(MantaPrestoSchemaTableName.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaPrestoSchemaTableName.class,
+        if (!tableHandle.getClass().equals(MantaSchemaTableName.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
                     tableHandle.getClass());
         }
 
-        MantaPrestoSchemaTableName tableName = (MantaPrestoSchemaTableName)tableHandle;
+        MantaSchemaTableName tableName = (MantaSchemaTableName)tableHandle;
 
         List<? extends ColumnMetadata> columns = columnLister.listColumns(
                 tableName.getSchemaName(), tableName.getTableName());
@@ -226,12 +226,12 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
     @Override
     public Map<String, ColumnHandle> getColumnHandles(final ConnectorSession session,
                                                       final ConnectorTableHandle handle) {
-        if (!handle.getClass().equals(MantaPrestoSchemaTableName.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaPrestoSchemaTableName.class,
+        if (!handle.getClass().equals(MantaSchemaTableName.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
                     handle.getClass());
         }
 
-        MantaPrestoSchemaTableName tableName = (MantaPrestoSchemaTableName)handle;
+        MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
         String objectPath = tableName.getObjectPath();
 
         if (!mantaClient.existsAndIsAccessible(objectPath)) {
@@ -241,12 +241,12 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             throw me;
         }
 
-        List<MantaPrestoColumn> columns = columnLister.listColumns(
+        List<MantaColumn> columns = columnLister.listColumns(
                 tableName.getSchemaName(), tableName.getTableName());
 
         ImmutableMap.Builder<String, ColumnHandle> builder = new ImmutableMap.Builder<>();
 
-        for (MantaPrestoColumn column : columns) {
+        for (MantaColumn column : columns) {
             builder.put(column.getName(), column);
         }
 
@@ -266,7 +266,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
             throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(schemaName);
         }
 
-        SchemaTableName table = new MantaPrestoSchemaTableName(schemaName,
+        SchemaTableName table = new MantaSchemaTableName(schemaName,
                 prefix.getTableName(), directory, prefix.getTableName());
 
         List<? extends ColumnMetadata> columns = columnLister.listColumns(
@@ -282,7 +282,7 @@ public class MantaPrestoMetadata implements ConnectorMetadata {
     public ColumnMetadata getColumnMetadata(final ConnectorSession session,
                                             final ConnectorTableHandle tableHandle,
                                             final ColumnHandle columnHandle) {
-        return ((MantaPrestoColumn)columnHandle);
+        return ((MantaColumn)columnHandle);
     }
 
     @Override

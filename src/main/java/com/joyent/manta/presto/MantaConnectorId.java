@@ -12,9 +12,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Class representing the id of a {@link MantaPrestoConnector}.
+ * Class representing the id of a {@link MantaConnector}.
  */
-public class MantaPrestoConnectorId {
+public class MantaConnectorId {
     /**
      * Connector identifier.
      */
@@ -25,7 +25,7 @@ public class MantaPrestoConnectorId {
      *
      * @param id Connector identifier
      */
-    public MantaPrestoConnectorId(final String id) {
+    public MantaConnectorId(final String id) {
         this.id = requireNonNull(id, "id is null");
     }
 
@@ -44,7 +44,7 @@ public class MantaPrestoConnectorId {
             return false;
         }
 
-        final MantaPrestoConnectorId that = (MantaPrestoConnectorId) o;
+        final MantaConnectorId that = (MantaConnectorId) o;
 
         return Objects.equals(id, that.id);
     }

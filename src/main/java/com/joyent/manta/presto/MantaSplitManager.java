@@ -8,7 +8,6 @@
 package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.ConnectorSession;
-import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorSplitSource;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.FixedSplitSource;
@@ -18,19 +17,17 @@ import com.google.common.collect.ImmutableList;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  *
  */
-public class MantaPrestoSplitManager implements ConnectorSplitManager {
+public class MantaSplitManager implements ConnectorSplitManager {
     private final String connectorId;
 
     @Inject
-    public MantaPrestoSplitManager(final MantaPrestoConnectorId connectorId) {
+    public MantaSplitManager(final MantaConnectorId connectorId) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
     }
 
@@ -38,15 +35,15 @@ public class MantaPrestoSplitManager implements ConnectorSplitManager {
     public ConnectorSplitSource getSplits(final ConnectorTransactionHandle handle,
                                           final ConnectorSession session,
                                           final ConnectorTableLayoutHandle layout) {
-        if (!layout.getClass().equals(MantaPrestoTableLayoutHandle.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaPrestoTableLayoutHandle.class,
+        if (!layout.getClass().equals(MantaTableLayoutHandle.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaTableLayoutHandle.class,
                     handle.getClass());
         }
 
-        MantaPrestoTableLayoutHandle layoutHandle = (MantaPrestoTableLayoutHandle)layout;
-        MantaPrestoSchemaTableName tableName = layoutHandle.getTableName();
+        MantaTableLayoutHandle layoutHandle = (MantaTableLayoutHandle)layout;
+        MantaSchemaTableName tableName = layoutHandle.getTableName();
 
-        MantaPrestoSplit split = new MantaPrestoSplit(connectorId,
+        MantaSplit split = new MantaSplit(connectorId,
                 tableName.getSchemaName(), tableName.getTableName(),
                 tableName.getObjectPath());
 

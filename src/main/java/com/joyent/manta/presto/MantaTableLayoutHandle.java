@@ -17,17 +17,17 @@ import java.util.Objects;
 /**
  *
  */
-public class MantaPrestoTableLayoutHandle implements ConnectorTableLayoutHandle {
-    private final MantaPrestoSchemaTableName tableName;
+public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
+    private final MantaSchemaTableName tableName;
 
     @JsonCreator
-    public MantaPrestoTableLayoutHandle(
-            @JsonProperty("tableName") final MantaPrestoSchemaTableName tableName) {
+    public MantaTableLayoutHandle(
+            @JsonProperty("tableName") final MantaSchemaTableName tableName) {
         this.tableName = tableName;
     }
 
     @JsonProperty
-    public MantaPrestoSchemaTableName getTableName() {
+    public MantaSchemaTableName getTableName() {
         return tableName;
     }
 
@@ -40,7 +40,7 @@ public class MantaPrestoTableLayoutHandle implements ConnectorTableLayoutHandle 
             return false;
         }
 
-        final MantaPrestoTableLayoutHandle that = (MantaPrestoTableLayoutHandle) o;
+        final MantaTableLayoutHandle that = (MantaTableLayoutHandle) o;
 
         return Objects.equals(tableName, that.tableName);
     }

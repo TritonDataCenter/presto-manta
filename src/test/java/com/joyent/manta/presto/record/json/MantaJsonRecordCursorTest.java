@@ -13,7 +13,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.google.inject.Injector;
 import com.joyent.manta.presto.MantaPrestoTestUtils;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import io.airlift.slice.Slice;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
@@ -31,7 +31,7 @@ import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static com.facebook.presto.type.JsonType.JSON;
 
 @Test
-public class MantaPrestoJsonRecordCursorTest {
+public class MantaJsonRecordCursorTest {
     private static final String TEST_FILE = "test-data/sample-data.ndjson.gz";
     private static final boolean OUTPUT_ENABLED = false;
 
@@ -48,7 +48,7 @@ public class MantaPrestoJsonRecordCursorTest {
     @SuppressWarnings("Duplicates")
     public void canParseJsonSampleRecordsWithoutAnError() throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        List<MantaPrestoColumn> columns = buildColumnList();
+        List<MantaColumn> columns = buildColumnList();
 
         final long totalBytes = 37782293;
 
@@ -56,7 +56,7 @@ public class MantaPrestoJsonRecordCursorTest {
         GZIPInputStream gzIn = new GZIPInputStream(in);
         CountingInputStream cin = new CountingInputStream(gzIn);
 
-        try (MantaPrestoJsonRecordCursor cursor = new MantaPrestoJsonRecordCursor(
+        try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(
                 columns, "/user/fake/object", totalBytes, cin, objectMapper)) {
 
             final int columnLen = columns.size();
@@ -131,19 +131,19 @@ public class MantaPrestoJsonRecordCursorTest {
         }
     }
 
-    private List<MantaPrestoColumn> buildColumnList() {
-        ImmutableList.Builder<MantaPrestoColumn> columns =
+    private List<MantaColumn> buildColumnList() {
+        ImmutableList.Builder<MantaColumn> columns =
                 new ImmutableList.Builder<>();
 
-        columns.add(new MantaPrestoColumn("name", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("article_id", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("publisher_id", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("tracking_id", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("count", INTEGER, "number"));
-        columns.add(new MantaPrestoColumn("resolution", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("ad_unit", VARCHAR, "string"));
-        columns.add(new MantaPrestoColumn("properties", JSON, "jsonObject"));
-        columns.add(new MantaPrestoColumn("timestamp", INTEGER, "number"));
+        columns.add(new MantaColumn("name", VARCHAR, "string"));
+        columns.add(new MantaColumn("article_id", VARCHAR, "string"));
+        columns.add(new MantaColumn("publisher_id", VARCHAR, "string"));
+        columns.add(new MantaColumn("tracking_id", VARCHAR, "string"));
+        columns.add(new MantaColumn("count", INTEGER, "number"));
+        columns.add(new MantaColumn("resolution", VARCHAR, "string"));
+        columns.add(new MantaColumn("ad_unit", VARCHAR, "string"));
+        columns.add(new MantaColumn("properties", JSON, "jsonObject"));
+        columns.add(new MantaColumn("timestamp", INTEGER, "number"));
 
         return columns.build();
     }

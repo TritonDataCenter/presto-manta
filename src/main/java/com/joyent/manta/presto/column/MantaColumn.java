@@ -17,11 +17,11 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 /**
  *
  */
-public class MantaPrestoColumn extends ColumnMetadata implements ColumnHandle {
+public class MantaColumn extends ColumnMetadata implements ColumnHandle {
     @JsonCreator
-    public MantaPrestoColumn(@JsonProperty("name") final String name,
-                             @JsonProperty("type") final Type type,
-                             @JsonProperty("extraInfo") final String extraInfo) {
+    public MantaColumn(@JsonProperty("name") final String name,
+                       @JsonProperty("type") final Type type,
+                       @JsonProperty("extraInfo") final String extraInfo) {
         super(name, type, null, extraInfo, false);
     }
 

@@ -7,8 +7,7 @@
  */
 package com.joyent.manta.presto.column;
 
-import com.facebook.presto.spi.ColumnMetadata;
-import com.joyent.manta.presto.MantaPrestoFileType;
+import com.joyent.manta.presto.MantaDataFileType;
 
 import java.util.List;
 
@@ -16,7 +15,7 @@ import java.util.List;
  *
  */
 public interface ColumnLister {
-    List<MantaPrestoColumn> listColumns(final String objectPath,
-                                        final MantaPrestoFileType type,
-                                        final String firstLine);
+    List<MantaColumn> listColumns(final String objectPath,
+                                  final MantaDataFileType type,
+                                  final String firstLine);
 }

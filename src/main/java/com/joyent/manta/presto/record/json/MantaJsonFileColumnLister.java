@@ -20,9 +20,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
-import com.joyent.manta.presto.MantaPrestoFileType;
+import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.column.ColumnLister;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 
@@ -35,18 +35,18 @@ import java.util.Map;
 /**
  *
  */
-public class MantaPrestoJsonFileColumnLister implements ColumnLister {
+public class MantaJsonFileColumnLister implements ColumnLister {
     private final ObjectMapper mapper;
 
     @Inject
-    public MantaPrestoJsonFileColumnLister(final ObjectMapper mapper) {
+    public MantaJsonFileColumnLister(final ObjectMapper mapper) {
         this.mapper = mapper;
     }
 
     @Override
-    public List<MantaPrestoColumn> listColumns(final String objectPath,
-                                               final MantaPrestoFileType fileType,
-                                               final String firstLine) {
+    public List<MantaColumn> listColumns(final String objectPath,
+                                         final MantaDataFileType fileType,
+                                         final String firstLine) {
         final JsonNode node;
 
         try {
@@ -70,7 +70,7 @@ public class MantaPrestoJsonFileColumnLister implements ColumnLister {
 
         final ObjectNode objectNode = (ObjectNode)node;
 
-        ImmutableList.Builder<MantaPrestoColumn> columns = new ImmutableList.Builder<>();
+        ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
 
         Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
 
@@ -133,7 +133,7 @@ public class MantaPrestoJsonFileColumnLister implements ColumnLister {
             }
 
             if (type != null) {
-                columns.add(new MantaPrestoColumn(key, type, extraInfo));
+                columns.add(new MantaColumn(key, type, extraInfo));
             }
         }
 

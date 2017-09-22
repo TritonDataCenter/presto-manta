@@ -10,13 +10,13 @@ package com.joyent.manta.presto.column;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.http.MantaHttpHeaders;
-import com.joyent.manta.presto.MantaPrestoFileType;
+import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
-import com.joyent.manta.presto.record.json.MantaPrestoJsonFileColumnLister;
+import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.util.MantaUtils;
 
 import javax.inject.Inject;
@@ -44,7 +44,7 @@ public class RedirectingColumnLister {
 
     private final int maxBytesPerLine;
 
-    private final MantaPrestoJsonFileColumnLister jsonLister;
+    private final MantaJsonFileColumnLister jsonLister;
 
     /**
      * Creates a new instance with the required properties.
@@ -57,7 +57,7 @@ public class RedirectingColumnLister {
     @Inject
     public RedirectingColumnLister(@Named("SchemaMapping") final Map<String, String> schemaMapping,
                                    @Named("MaxBytesPerLine") final Integer maxBytesPerLine,
-                                   final MantaPrestoJsonFileColumnLister jsonLister,
+                                   final MantaJsonFileColumnLister jsonLister,
                                    final MantaClient mantaClient) {
         this.schemaMapping = requireNonNull(schemaMapping, "Schema mapping is null");
         this.maxBytesPerLine = requireNonNull(maxBytesPerLine, "Max bytes per line is null");
@@ -65,18 +65,18 @@ public class RedirectingColumnLister {
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
     }
 
-    public List<MantaPrestoColumn> listColumns(final String schemaName, final String tableName) {
+    public List<MantaColumn> listColumns(final String schemaName, final String tableName) {
         requireNonNull(schemaName, "Schema name is null");
         requireNonNull(tableName, "Table name is null");
 
         String objectPath = objectPath(schemaName, tableName);
 
         final String firstLine;
-        final MantaPrestoFileType type;
+        final MantaDataFileType type;
 
         try (MantaObjectInputStream in = objectStream(objectPath)) {
             firstLine = readFirstLine(in);
-            type = MantaPrestoFileType.determineFileType(in);
+            type = MantaDataFileType.determineFileType(in);
         } catch (IOException e) {
             String msg = "Error reading first line of file object";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);

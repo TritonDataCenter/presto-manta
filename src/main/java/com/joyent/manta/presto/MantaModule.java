@@ -23,7 +23,7 @@ import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
-import com.joyent.manta.presto.record.json.MantaPrestoJsonFileColumnLister;
+import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -40,11 +40,11 @@ import static java.util.Objects.requireNonNull;
  * Guice module that loads in the configuration needed to inject the
  * dependencies for the Manta Presto Connector.
  */
-public class MantaPrestoModule implements Module {
+public class MantaModule implements Module {
     /**
      * Logger instance.
      */
-    private static final Logger log = LoggerFactory.getLogger(MantaPrestoModule.class);
+    private static final Logger log = LoggerFactory.getLogger(MantaModule.class);
 
     /**
      * Default maximum number of bytes per line is 10k.
@@ -59,9 +59,9 @@ public class MantaPrestoModule implements Module {
     private final Map<String, String> schemaMapping = new HashMap<>();
     private final Integer maxBytesPerLine;
 
-    public MantaPrestoModule(final String connectorId,
-                             final TypeManager typeManager,
-                             final Map<String, String> configParams) {
+    public MantaModule(final String connectorId,
+                       final TypeManager typeManager,
+                       final Map<String, String> configParams) {
         this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
 
@@ -161,14 +161,14 @@ public class MantaPrestoModule implements Module {
 
         binder.bind(ConfigContext.class).toInstance(this.config);
         binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoConnector.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoConnectorId.class).toInstance(new MantaPrestoConnectorId(connectorId));
+        binder.bind(MantaConnector.class).in(Scopes.SINGLETON);
+        binder.bind(MantaConnectorId.class).toInstance(new MantaConnectorId(connectorId));
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoJsonFileColumnLister.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoMetadata.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoSplitManager.class).in(Scopes.SINGLETON);
-        binder.bind(MantaPrestoRecordSetProvider.class).in(Scopes.SINGLETON);
+        binder.bind(MantaJsonFileColumnLister.class).in(Scopes.SINGLETON);
+        binder.bind(MantaMetadata.class).in(Scopes.SINGLETON);
+        binder.bind(MantaSplitManager.class).in(Scopes.SINGLETON);
+        binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);
 
-        jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaPrestoTypeDeserializer.class);
+        jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaTypeDeserializer.class);
     }
 }

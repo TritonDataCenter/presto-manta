@@ -7,10 +7,8 @@
  */
 package com.joyent.manta.presto;
 
-import com.facebook.presto.spi.type.VarcharType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Injector;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -18,7 +16,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 
 @Test
-public class MantaPrestoColumnTest {
+public class MantaTableLayoutHandleTest {
     private Injector injector;
 
     @BeforeClass
@@ -29,13 +27,15 @@ public class MantaPrestoColumnTest {
 
     public void canSerializeToAndFromJson() throws IOException {
         ObjectMapper mapper = injector.getInstance(ObjectMapper.class);
-        MantaPrestoColumn column = new MantaPrestoColumn("test",
-                VarcharType.VARCHAR, "test");
-        String json = mapper.writeValueAsString(column);
-
+        MantaSchemaTableName tableName = new MantaSchemaTableName("schema", "table",
+                "/user/stor/foo", "table.json");
+        MantaTableLayoutHandle tableLayoutHandle = new MantaTableLayoutHandle(tableName);
+        String json = mapper.writeValueAsString(tableLayoutHandle);
         Assert.assertNotNull(json);
 
-//        MantaPrestoColumn columnDeserialized = mapper.readValue(json, MantaPrestoColumn.class);
-//        Assert.assertEquals(column, columnDeserialized);
+        MantaTableLayoutHandle tableLayoutHandleDeserialized =
+                mapper.readValue(json, MantaTableLayoutHandle.class);
+
+        Assert.assertEquals(tableLayoutHandle, tableLayoutHandleDeserialized);
     }
 }

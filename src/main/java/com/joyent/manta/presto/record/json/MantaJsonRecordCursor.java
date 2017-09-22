@@ -17,7 +17,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
@@ -35,12 +35,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  *
  */
-public class MantaPrestoJsonRecordCursor implements RecordCursor {
-    private static final Logger LOG = LoggerFactory.getLogger(MantaPrestoJsonRecordCursor.class);
+public class MantaJsonRecordCursor implements RecordCursor {
+    private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
     private final ObjectMapper objectMapper;
 
-    private final List<MantaPrestoColumn> columns;
+    private final List<MantaColumn> columns;
     private final long totalBytes;
     private long lines = 0L;
     private Long readTimeStartNanos = null;
@@ -51,11 +51,11 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
 
     private Map<Integer, JsonNode> row;
 
-    public MantaPrestoJsonRecordCursor(final List<MantaPrestoColumn> columns,
-                                       final String objectPath,
-                                       final long totalBytes,
-                                       final CountingInputStream countingStream,
-                                       final ObjectMapper objectMapper) {
+    public MantaJsonRecordCursor(final List<MantaColumn> columns,
+                                 final String objectPath,
+                                 final long totalBytes,
+                                 final CountingInputStream countingStream,
+                                 final ObjectMapper objectMapper) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.objectMapper = objectMapper;
@@ -202,7 +202,7 @@ public class MantaPrestoJsonRecordCursor implements RecordCursor {
         ImmutableMap.Builder<Integer, JsonNode> map = new ImmutableMap.Builder<>();
 
         int count = 0;
-        for (MantaPrestoColumn column : columns) {
+        for (MantaColumn column : columns) {
             map.put(count++, object.get(column.getName()));
         }
 

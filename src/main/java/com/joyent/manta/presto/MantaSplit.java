@@ -23,17 +23,17 @@ import static java.util.Objects.requireNonNull;
 /**
  *
  */
-public class MantaPrestoSplit implements ConnectorSplit {
+public class MantaSplit implements ConnectorSplit {
     private final String connectorId;
     private final String schemaName;
     private final String tableName;
     private final String objectPath;
 
     @JsonCreator
-    public MantaPrestoSplit(@JsonProperty("connectorId") final String connectorId,
-                            @JsonProperty("schemaName") final String schemaName,
-                            @JsonProperty("tableName") final String tableName,
-                            @JsonProperty("objectPath") final String objectPath) {
+    public MantaSplit(@JsonProperty("connectorId") final String connectorId,
+                      @JsonProperty("schemaName") final String schemaName,
+                      @JsonProperty("tableName") final String tableName,
+                      @JsonProperty("objectPath") final String objectPath) {
         this.schemaName = requireNonNull(schemaName, "schema name is null");
         this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.tableName = requireNonNull(tableName, "table name is null");

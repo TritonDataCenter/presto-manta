@@ -8,7 +8,6 @@
 package com.joyent.manta.presto;
 
 import com.google.common.io.Files;
-import com.google.common.net.MediaType;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.client.MantaObjectResponse;
@@ -41,7 +40,7 @@ public class ObjectToTableDirectoryListingFilter implements Predicate<MantaObjec
         // If the file extension is supported, present the file as a table
         final String extension = Files.getFileExtension(obj.getPath());
         final boolean isSupportedExtension = StringUtils.isNotBlank(extension)
-                && MantaPrestoFileType.isSupportedFileTypeByExtension(extension);
+                && MantaDataFileType.isSupportedFileTypeByExtension(extension);
 
         if (isSupportedExtension) {
             return true;
@@ -67,7 +66,7 @@ public class ObjectToTableDirectoryListingFilter implements Predicate<MantaObjec
         try {
             String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(
                     contentType);
-            return MantaPrestoFileType.isSupportFileTypeByMediaType(mediaType);
+            return MantaDataFileType.isSupportFileTypeByMediaType(mediaType);
         } catch (IllegalArgumentException e) {
             return false;
         }

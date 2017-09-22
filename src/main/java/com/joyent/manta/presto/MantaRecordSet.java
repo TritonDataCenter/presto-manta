@@ -15,11 +15,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
-import com.joyent.manta.presto.column.MantaPrestoColumn;
+import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
-import com.joyent.manta.presto.record.json.MantaPrestoJsonRecordCursor;
+import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 
 import java.io.IOException;
 import java.util.List;
@@ -29,24 +29,24 @@ import static java.util.Objects.requireNonNull;
 /**
  *
  */
-public class MantaPrestoRecordSet implements RecordSet {
-    private final List<MantaPrestoColumn> columns;
+public class MantaRecordSet implements RecordSet {
+    private final List<MantaColumn> columns;
     private final List<Type> columnTypes;
     private final String objectPath;
     private final MantaClient mantaClient;
     private final ObjectMapper objectMapper;
 
-    public MantaPrestoRecordSet(final MantaPrestoSplit split,
-                                final List<MantaPrestoColumn> columns,
-                                final MantaClient mantaClient,
-                                final ObjectMapper objectMapper) {
+    public MantaRecordSet(final MantaSplit split,
+                          final List<MantaColumn> columns,
+                          final MantaClient mantaClient,
+                          final ObjectMapper objectMapper) {
         requireNonNull(split, "split is null");
         this.columns = requireNonNull(columns, "column handles is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
         this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
 
         ImmutableList.Builder<Type> types = ImmutableList.builder();
-        for (MantaPrestoColumn column : columns) {
+        for (MantaColumn column : columns) {
             types.add(column.getType());
         }
         this.columnTypes = types.build();
@@ -75,11 +75,11 @@ public class MantaPrestoRecordSet implements RecordSet {
         long totalBytes = in.getContentLength();
         CountingInputStream cin = new CountingInputStream(in);
 
-        MantaPrestoFileType type = MantaPrestoFileType.determineFileType(in);
+        MantaDataFileType type = MantaDataFileType.determineFileType(in);
 
         switch (type) {
             case LDJSON:
-                return new MantaPrestoJsonRecordCursor(columns, objectPath,
+                return new MantaJsonRecordCursor(columns, objectPath,
                         totalBytes, cin, objectMapper);
             default:
                 String msg = "Can't create cursor for unsupported file type";

@@ -12,6 +12,6 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 /**
  *
  */
-public enum MantaPrestoTransactionHandle implements ConnectorTransactionHandle {
+public enum MantaTransactionHandle implements ConnectorTransactionHandle {
     INSTANCE;
 }

@@ -21,7 +21,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Enum indicating the type of file that will be processed.
  */
-public enum MantaPrestoFileType {
+public enum MantaDataFileType {
     /**
      * New line delimited JSON.
      */
@@ -44,20 +44,20 @@ public enum MantaPrestoFileType {
     /**
      * Lookup table to resolve enum value by extension.
      */
-    private static final Map<String, MantaPrestoFileType> EXTENSION_LOOKUP;
+    private static final Map<String, MantaDataFileType> EXTENSION_LOOKUP;
 
     /**
      * Lookup table to resolve enum value by media type.
      */
-    private static final Map<String, MantaPrestoFileType> MEDIA_TYPE_LOOKUP;
+    private static final Map<String, MantaDataFileType> MEDIA_TYPE_LOOKUP;
 
     static {
-        ImmutableMap.Builder<String, MantaPrestoFileType> extensionMapBuilder =
+        ImmutableMap.Builder<String, MantaDataFileType> extensionMapBuilder =
                 new ImmutableMap.Builder<>();
-        ImmutableMap.Builder<String, MantaPrestoFileType> mediaTypeMapBuilder =
+        ImmutableMap.Builder<String, MantaDataFileType> mediaTypeMapBuilder =
                 new ImmutableMap.Builder<>();
 
-        for (MantaPrestoFileType type : values()) {
+        for (MantaDataFileType type : values()) {
             for (String extension : type.extensions) {
                 extensionMapBuilder.put(extension, type);
             }
@@ -69,7 +69,7 @@ public enum MantaPrestoFileType {
         MEDIA_TYPE_LOOKUP = mediaTypeMapBuilder.build();
     }
 
-    MantaPrestoFileType(final String[] extensions, final String[] mediaTypes) {
+    MantaDataFileType(final String[] extensions, final String[] mediaTypes) {
         this.extensions = extensions;
         this.mediaTypes = mediaTypes;
     }
@@ -80,7 +80,7 @@ public enum MantaPrestoFileType {
      * @param extension file extension
      * @return related enum value or null if not found
      */
-    public static MantaPrestoFileType valueByExtension(final String extension) {
+    public static MantaDataFileType valueByExtension(final String extension) {
         requireNonNull(extension, "Extension is null");
         return EXTENSION_LOOKUP.get(extension);
     }
@@ -91,7 +91,7 @@ public enum MantaPrestoFileType {
      * @param mediaType HTTP content type (media type)
      * @return related enum value or null if not found
      */
-    public static MantaPrestoFileType valueByMediaType(final String mediaType) {
+    public static MantaDataFileType valueByMediaType(final String mediaType) {
         requireNonNull(mediaType, "Media type is null");
         return MEDIA_TYPE_LOOKUP.get(mediaType);
     }
@@ -117,21 +117,21 @@ public enum MantaPrestoFileType {
     }
 
     /**
-     * Determines what {@link MantaPrestoFileType} is associated with
+     * Determines what {@link MantaDataFileType} is associated with
      * an object via looking up metadata on its file extension or
      * media type.
      *
      * @param object object reference for debugging information
      * @return instance of enum associated with object's file type
      */
-    public static MantaPrestoFileType determineFileType(final MantaObject object) {
+    public static MantaDataFileType determineFileType(final MantaObject object) {
         requireNonNull(object, "Manta object is null");
 
         final String extension = Files.getFileExtension(object.getPath());
         final String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(
                 object.getContentType());
 
-        final MantaPrestoFileType type = ObjectUtils.firstNonNull(
+        final MantaDataFileType type = ObjectUtils.firstNonNull(
                 valueByExtension(extension), valueByMediaType(mediaType));
 
         if (type == null) {

@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Test
-public class MantaPrestoModuleTest {
+public class MantaModuleTest {
     private Injector injector;
 
     @BeforeClass
@@ -36,7 +36,7 @@ public class MantaPrestoModuleTest {
         );
         Map<String, String> schemaMapping = new HashMap<>();
 
-        MantaPrestoModule.addToSchemaMapping(config, schemaMapping, "/user");
+        MantaModule.addToSchemaMapping(config, schemaMapping, "/user");
 
         Assert.assertTrue(schemaMapping.size() == 3,
                 "Expected only a schema map with 3 entries. Actually: "

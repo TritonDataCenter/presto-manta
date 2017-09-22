@@ -31,10 +31,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.mockito.Mockito.mock;
 
 @Test
-public class MantaPrestoMetadataIT {
+public class MantaMetadataIT {
     private Injector injector;
     private MantaClient mantaClient;
-    private MantaPrestoMetadata instance;
+    private MantaMetadata instance;
     private String testPathPrefix;
     private ConnectorSession session;
 
@@ -48,7 +48,7 @@ public class MantaPrestoMetadataIT {
         injector = MantaPrestoTestUtils.createInjectorInstance(emptyConfig);
 
         mantaClient = injector.getInstance(MantaClient.class);
-        instance = injector.getInstance(MantaPrestoMetadata.class);
+        instance = injector.getInstance(MantaMetadata.class);
         session = mock(ConnectorSession.class);
 
         testPathPrefix = String.format("%s/stor/java-manta-integration-tests/%s/",
@@ -97,13 +97,13 @@ public class MantaPrestoMetadataIT {
         final String testDir = testPathPrefix;
         mantaClient.putDirectory(testDir);
 
-        List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
-                new MantaPrestoSchemaTableName("default", "file-1.ndjson", testDir, "file-1.ndjson"),
-                new MantaPrestoSchemaTableName("default", "file-2.ndjson", testDir, "file-2.ndjson"),
-                new MantaPrestoSchemaTableName("default", "file-3.ndjson", testDir, "file-3.ndjson")
+        List<MantaSchemaTableName> expected = ImmutableList.of(
+                new MantaSchemaTableName("default", "file-1.ndjson", testDir, "file-1.ndjson"),
+                new MantaSchemaTableName("default", "file-2.ndjson", testDir, "file-2.ndjson"),
+                new MantaSchemaTableName("default", "file-3.ndjson", testDir, "file-3.ndjson")
         );
 
-        for (MantaPrestoSchemaTableName table : expected) {
+        for (MantaSchemaTableName table : expected) {
             mantaClient.put(table.getObjectPath(), table.getRelativeFilePath() + " content", UTF_8);
         }
 
@@ -119,13 +119,13 @@ public class MantaPrestoMetadataIT {
         final String testDir = testPathPrefix;
         mantaClient.putDirectory(testDir);
 
-        List<MantaPrestoSchemaTableName> expected = ImmutableList.of(
-                new MantaPrestoSchemaTableName("default", "file-1", testDir, "file-1"),
-                new MantaPrestoSchemaTableName("default", "file-2", testDir, "file-2"),
-                new MantaPrestoSchemaTableName("default", "file-3", testDir, "file-3")
+        List<MantaSchemaTableName> expected = ImmutableList.of(
+                new MantaSchemaTableName("default", "file-1", testDir, "file-1"),
+                new MantaSchemaTableName("default", "file-2", testDir, "file-2"),
+                new MantaSchemaTableName("default", "file-3", testDir, "file-3")
         );
 
-        for (MantaPrestoSchemaTableName table : expected) {
+        for (MantaSchemaTableName table : expected) {
             MantaHttpHeaders headers = new MantaHttpHeaders()
                     .setContentType("application/x-ndjson; charset=utf8");
             mantaClient.put(table.getObjectPath(), table.getRelativeFilePath() + " content", headers);
