@@ -38,10 +38,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
-    private final ObjectMapper objectMapper;
-
     private final List<MantaColumn> columns;
-    private final long totalBytes;
+    private Long totalBytes = null;
     private long lines = 0L;
     private Long readTimeStartNanos = null;
 
@@ -53,12 +51,11 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     public MantaJsonRecordCursor(final List<MantaColumn> columns,
                                  final String objectPath,
-                                 final long totalBytes,
+                                 final Long totalBytes,
                                  final CountingInputStream countingStream,
                                  final ObjectMapper objectMapper) {
         this.columns = columns;
         this.objectPath = objectPath;
-        this.objectMapper = objectMapper;
         this.totalBytes = totalBytes;
         this.countingStream = countingStream;
 
@@ -74,6 +71,10 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public long getTotalBytes() {
+        if (totalBytes == null) {
+            return -1L;
+        }
+
         return totalBytes;
     }
 
@@ -104,6 +105,9 @@ public class MantaJsonRecordCursor implements RecordCursor {
         }
 
         if (!lineItr.hasNext()) {
+            if (totalBytes == null) {
+                totalBytes = countingStream.getCount();
+            }
             return false;
         }
 
