@@ -7,17 +7,14 @@
  */
 package com.joyent.manta.presto.column;
 
-import com.google.common.net.MediaType;
 import com.joyent.manta.client.MantaObjectInputStream;
+import com.joyent.manta.presto.MantaCompressionType;
 import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoFileFormatException;
-import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -28,19 +25,23 @@ import java.util.Scanner;
  * then aborts the connection on close().
  */
 public class FirstLinePeeker {
-    private final MantaObjectInputStream inputStream;
+    private final MantaObjectInputStream mantaInputStream;
+    private final InputStream inputStream;
+    private final String charset;
 
     public FirstLinePeeker(final MantaObjectInputStream inputStream) {
-        this.inputStream = Objects.requireNonNull(inputStream,
+        this.mantaInputStream = Objects.requireNonNull(inputStream,
                 "InputStream is null");
+        this.charset = MantaPrestoUtils.parseCharset(
+                mantaInputStream.getContentType(), StandardCharsets.UTF_8).name();
+        this.inputStream = MantaCompressionType.wrapMantaStreamIfCompressed(inputStream);
     }
 
     public String readFirstLine() {
         String line;
         long count = 1;
 
-        try (Scanner scanner = new Scanner(inputStream, MantaPrestoUtils.parseCharset(
-                inputStream.getContentType(), StandardCharsets.UTF_8).name())) {
+        try (Scanner scanner = new Scanner(inputStream, charset)) {
             line = scanner.nextLine();
 
             // Skip blank lines
@@ -51,7 +52,7 @@ public class FirstLinePeeker {
         } catch (NoSuchElementException e) {
             String msg = "Data file doesn't contain a single new line marker";
             MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(inputStream, me);
+            MantaPrestoExceptionUtils.annotateMantaObjectDetails(mantaInputStream, me);
             me.setContextValue("linesRead", count);
 
             throw me;
@@ -60,7 +61,7 @@ public class FirstLinePeeker {
         if (StringUtils.isBlank(line)) {
             String msg = "Data file contains only blank lines";
             MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg);
-            MantaPrestoExceptionUtils.annotateMantaObjectDetails(inputStream, me);
+            MantaPrestoExceptionUtils.annotateMantaObjectDetails(mantaInputStream, me);
             me.setContextValue("linesRead", count);
 
             throw me;

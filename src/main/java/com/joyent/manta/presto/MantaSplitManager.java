@@ -54,7 +54,7 @@ public class MantaSplitManager implements ConnectorSplitManager {
                 table.directoryFilter())
                 .filter(table.filter())
                 .filter(obj -> !obj.isDirectory())
-                .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME) );
+                .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME));
 
         return new MantaStreamingSplitSource(connectorId, tableName.getSchemaName(),
                 tableName.getTableName(), table.getDataFileType(), objectStream);

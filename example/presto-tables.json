@@ -1,0 +1,23 @@
+[
+  {
+    "name":"logical-table-1",
+    "rootPath":"~~/stor/json-examples",
+    "dataFileType":"NDJSON",
+    "directoryFilterRegex":"",
+    "filterRegex":""
+  },
+  {
+    "name":"logical-table-2",
+    "rootPath":"~~/stor/analytics",
+    "dataFileType":"NDJSON",
+    "directoryFilterRegex":"",
+    "filterRegex":""
+  },
+  {
+    "name":"logical-table-3",
+    "rootPath":"~~/stor/analytics_compressed",
+    "dataFileType":"NDJSON",
+    "directoryFilterRegex":"",
+    "filterRegex":""
+  }
+]

@@ -27,7 +27,6 @@ import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableDeserializer;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
-import com.joyent.manta.presto.tables.MantaLogicalTableSerializer;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,9 +168,10 @@ public class MantaModule implements Module {
         binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);
 
         jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaTypeDeserializer.class);
+        /* We use a custom deserializer in order to provide more informative errors
+         * and flexible parsing to users who are manually writing presto-tables.json
+         * files. */
         jsonBinder(binder).addDeserializerBinding(MantaLogicalTable.class)
                 .to(MantaLogicalTableDeserializer.class).in(Scopes.SINGLETON);
-        jsonBinder(binder).addSerializerBinding(MantaLogicalTable.class)
-                .to(MantaLogicalTableSerializer.class).in(Scopes.SINGLETON);
     }
 }

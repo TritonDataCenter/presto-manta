@@ -22,6 +22,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -62,10 +63,12 @@ public class MantaRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
-        final MantaObjectInputStream in;
+        final MantaObjectInputStream mantaInputStream;
+        final InputStream in;
 
         try {
-            in = mantaClient.getAsInputStream(objectPath);
+            mantaInputStream = mantaClient.getAsInputStream(objectPath);
+            in = MantaCompressionType.wrapMantaStreamIfCompressed(mantaInputStream);
         } catch (IOException e) {
             String msg = "There was a problem opening a connection to Manta";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
@@ -73,7 +76,7 @@ public class MantaRecordSet implements RecordSet {
             throw me;
         }
 
-        long totalBytes = in.getContentLength();
+        long totalBytes = mantaInputStream.getContentLength();
         CountingInputStream cin = new CountingInputStream(in);
 
         switch (dataFileType) {
@@ -84,7 +87,7 @@ public class MantaRecordSet implements RecordSet {
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
                 me.setContextValue("dataFileType", dataFileType);
-                MantaPrestoExceptionUtils.annotateMantaObjectDetails(in, me);
+                MantaPrestoExceptionUtils.annotateMantaObjectDetails(mantaInputStream, me);
                 throw me;
         }
 

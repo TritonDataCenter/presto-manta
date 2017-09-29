@@ -65,6 +65,8 @@
         <dependency.checkstyle.version>6.17</dependency.checkstyle.version>
         <dependency.java-manta.version>3.1.7-SNAPSHOT</dependency.java-manta.version>
         <dependency.presto.version>0.184</dependency.presto.version>
+        <dependency.commons-compress.version>1.14</dependency.commons-compress.version>
+        <dependency.xz-version>1.6</dependency.xz-version>
         <dependency.slfj.version>1.7.21</dependency.slfj.version>
         <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
@@ -118,6 +120,18 @@
             <artifactId>presto-main</artifactId>
             <version>${dependency.presto.version}</version>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${dependency.commons-compress.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>${dependency.xz-version}</version>
         </dependency>
 
         <dependency>

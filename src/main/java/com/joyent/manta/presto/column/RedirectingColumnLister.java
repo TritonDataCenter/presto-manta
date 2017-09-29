@@ -7,9 +7,11 @@
  */
 package com.joyent.manta.presto.column;
 
+import com.google.common.io.Files;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.http.MantaHttpHeaders;
+import com.joyent.manta.presto.MantaCompressionType;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
@@ -92,6 +94,9 @@ public class RedirectingColumnLister {
         try {
             FirstLinePeeker peeker = new FirstLinePeeker(in);
             return peeker.readFirstLine();
+        } catch (MantaPrestoRuntimeException e) {
+            throw e;
+        // Wrap uncaught runtime exceptions with additional details
         } catch (RuntimeException e) {
             String msg = "Problem peeking at the first line of remote file";
             MantaPrestoRuntimeException me = new MantaPrestoRuntimeException(msg, e);
@@ -111,7 +116,14 @@ public class RedirectingColumnLister {
     private MantaObjectInputStream objectStream(final String objectPath) {
         try {
             MantaHttpHeaders headers = new MantaHttpHeaders();
-            headers.setRange(String.format("bytes=0-%d", maxBytesPerLine));
+
+            String extension = Files.getFileExtension(objectPath);
+
+            // Don't do HTTP range requests on compressed files
+            if (!MantaCompressionType.isExtensionSupported(extension)) {
+                headers.setRange(String.format("bytes=0-%d", maxBytesPerLine));
+            }
+
             return mantaClient.getAsInputStream(objectPath, headers);
         } catch (IOException e) {
             String msg = "Problem opening InputStream to Manta object";

@@ -36,12 +36,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static com.joyent.manta.presto.tables.MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -196,7 +198,9 @@ public class MantaMetadata implements ConnectorMetadata {
         try (Stream<MantaObject> find = mantaClient
                 .find(table.getRootPath(), table.directoryFilter())
                 .filter(table.filter())
-                .filter(obj -> !obj.isDirectory())) {
+                .filter(obj -> !obj.isDirectory())
+                .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME))
+                .sorted(Comparator.comparingLong(MantaObject::getContentLength))) {
             first = find.findFirst();
         }
 
