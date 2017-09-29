@@ -58,8 +58,6 @@ public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
             handles.add((MantaColumn) column);
         }
 
-
-
         return new MantaRecordSet(mantaSplit, handles.build(), mantaClient,
                 objectMapper);
     }

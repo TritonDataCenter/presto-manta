@@ -12,10 +12,9 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.joyent.manta.presto.tables.MantaLogicalTable;
 
 import java.util.Objects;
-
-import static com.joyent.manta.client.MantaClient.SEPARATOR;
 
 /**
  * A Manta Presto specific implementation of {@link SchemaTableName} that
@@ -23,39 +22,35 @@ import static com.joyent.manta.client.MantaClient.SEPARATOR;
  */
 public class MantaSchemaTableName extends SchemaTableName
         implements ConnectorTableHandle {
-    private final String directory;
-    private final String relativeFilePath;
+    private final MantaLogicalTable table;
 
     @JsonCreator
-    public MantaSchemaTableName(@JsonProperty("schema") final String schemaName,
-                                @JsonProperty("table") final String tableName,
-                                @JsonProperty("directory") final String directory,
-                                @JsonProperty("relativeFilePath") final String relativeFilePath) {
-        super(schemaName, tableName);
-        this.directory = directory;
-        this.relativeFilePath = relativeFilePath;
+    public MantaSchemaTableName(@JsonProperty("schemaName") final String schemaName,
+                                @JsonProperty("table") final MantaLogicalTable table) {
+        super(schemaName, table.getTableName());
+        this.table = table;
     }
 
     @Override
     public SchemaTablePrefix toSchemaTablePrefix() {
-        return new SchemaTablePrefix(directory, relativeFilePath);
+        return new SchemaTablePrefix(getSchemaName(), getTableName());
     }
 
-    @JsonProperty
-    public String getDirectory() {
-        return directory;
+    @JsonProperty("table")
+    public MantaLogicalTable getTable() {
+        return table;
     }
 
-    @JsonProperty
-    public String getRelativeFilePath() {
-        return relativeFilePath;
+    @JsonProperty("schemaName")
+    @Override
+    public String getSchemaName() {
+        return super.getSchemaName();
     }
 
-    /**
-     * @return the full path to the Manta relativeFilePath include the directory
-     */
-    public String getObjectPath() {
-        return getDirectory() + SEPARATOR + getRelativeFilePath();
+    @JsonProperty("tableName")
+    @Override
+    public String getTableName() {
+        return super.getTableName();
     }
 
     @Override
@@ -69,12 +64,11 @@ public class MantaSchemaTableName extends SchemaTableName
         if (!super.equals(o)) return false;
 
         final MantaSchemaTableName that = (MantaSchemaTableName) o;
-        return Objects.equals(directory, that.directory)
-               && Objects.equals(relativeFilePath, that.relativeFilePath);
+        return Objects.equals(table, that.table);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), directory, relativeFilePath);
+        return Objects.hash(super.hashCode(), table);
     }
 }

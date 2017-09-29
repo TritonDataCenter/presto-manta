@@ -11,11 +11,8 @@ import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.HostAddress;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableList;
-import com.joyent.manta.http.ShufflingDnsResolver;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
-import java.net.URI;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -28,16 +25,19 @@ public class MantaSplit implements ConnectorSplit {
     private final String schemaName;
     private final String tableName;
     private final String objectPath;
+    private final MantaDataFileType dataFileType;
 
     @JsonCreator
     public MantaSplit(@JsonProperty("connectorId") final String connectorId,
                       @JsonProperty("schemaName") final String schemaName,
                       @JsonProperty("tableName") final String tableName,
-                      @JsonProperty("objectPath") final String objectPath) {
+                      @JsonProperty("objectPath") final String objectPath,
+                      @JsonProperty("dataFileType") final MantaDataFileType dataFileType) {
         this.schemaName = requireNonNull(schemaName, "schema name is null");
         this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.tableName = requireNonNull(tableName, "table name is null");
         this.objectPath = requireNonNull(objectPath, "object path is null");
+        this.dataFileType = requireNonNull(dataFileType, "data file type is null");
     }
 
     @JsonProperty
@@ -58,6 +58,11 @@ public class MantaSplit implements ConnectorSplit {
     @JsonProperty
     public String getObjectPath() {
         return objectPath;
+    }
+
+    @JsonProperty
+    public MantaDataFileType getDataFileType() {
+        return dataFileType;
     }
 
     @JsonProperty
@@ -83,6 +88,7 @@ public class MantaSplit implements ConnectorSplit {
                 .append("schemaName", schemaName)
                 .append("tableName", tableName)
                 .append("objectPath", objectPath)
+                .append("dataFileType", dataFileType)
                 .toString();
     }
 }

@@ -63,7 +63,7 @@
         <failsafe.useSystemClassLoader>true</failsafe.useSystemClassLoader>
         <!-- Dependency versions -->
         <dependency.checkstyle.version>6.17</dependency.checkstyle.version>
-        <dependency.java-manta.version>3.1.6</dependency.java-manta.version>
+        <dependency.java-manta.version>3.1.7-SNAPSHOT</dependency.java-manta.version>
         <dependency.presto.version>0.184</dependency.presto.version>
         <dependency.slfj.version>1.7.21</dependency.slfj.version>
         <dependency.airlift.version>0.148</dependency.airlift.version>

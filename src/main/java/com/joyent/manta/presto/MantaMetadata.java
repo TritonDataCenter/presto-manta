@@ -22,41 +22,31 @@ import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.exception.MantaClientHttpResponseException;
-import com.joyent.manta.exception.MantaErrorCode;
+import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
-import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoTableNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
-import org.apache.commons.lang3.StringUtils;
+import com.joyent.manta.presto.tables.MantaLogicalTable;
+import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
 /**
  * <p>Class that provides methods for listing schemas, tables, and columns. This
  * class contains the domain mapping logic between Presto and Manta.</p>
- *
- * <p>Presto to Manta concept mapping:</p>
- * <table>
- *  <tr><th>Presto</th><th>Manta</th></tr>
- *  <tr><td>Schema</td><td>Directory</td>
- *  <tr><td>Table</td><td>File</td></tr>
- *  <tr><td>Column</td><td>Line within file</td></tr>
- * </table>
  */
 public class MantaMetadata implements ConnectorMetadata {
     /**
@@ -71,16 +61,21 @@ public class MantaMetadata implements ConnectorMetadata {
      * Map relating configured schema name to Manta directory path.
      */
     private final Map<String, String> schemaMapping;
+
+    private final MantaLogicalTableProvider tableProvider;
+
     private final ObjectToTableDirectoryListingFilter tableListingFilter;
 
     @Inject
     public MantaMetadata(final MantaConnectorId connectorId,
                          final RedirectingColumnLister columnLister,
                          @Named("SchemaMapping") final Map<String, String> schemaMapping,
+                         final MantaLogicalTableProvider tableProvider,
                          final MantaClient mantaClient) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
         this.columnLister = requireNonNull(columnLister, "column lister is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client instance is null");
+        this.tableProvider = requireNonNull(tableProvider, "table provider is null");
         this.tableListingFilter = new ObjectToTableDirectoryListingFilter(mantaClient);
         this.schemaMapping = schemaMapping;
     }
@@ -102,75 +97,16 @@ public class MantaMetadata implements ConnectorMetadata {
     @Override
     public List<SchemaTableName> listTables(final ConnectorSession session,
                                             final String schemaName) {
-        final String directory = schemaMapping.get(schemaName);
-
-        if (directory == null) {
-            throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(schemaName);
-        }
-
-        try {
-            return mantaClient
-                    .listObjects(directory)
-                    .filter(tableListingFilter)
-                    .map(obj -> {
-                        String relativePath = StringUtils.removeStart(
-                                obj.getPath(), directory);
-                        String cleanRelativePath = StringUtils.stripStart(
-                                relativePath, MantaClient.SEPARATOR);
-
-                        return new MantaSchemaTableName(
-                                schemaName, cleanRelativePath,
-                                directory, cleanRelativePath);
-                    })
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            if (e instanceof MantaClientHttpResponseException) {
-                MantaClientHttpResponseException mchre = (MantaClientHttpResponseException)e;
-
-                if (mchre.getServerCode().equals(MantaErrorCode.RESOURCE_NOT_FOUND_ERROR)) {
-                    String msg = "Manta directory path resolved from schema "
-                            + "does not exist.";
-                    MantaPrestoSchemaNotFoundException me =
-                            new MantaPrestoSchemaNotFoundException(schemaName, msg);
-                    me.setContextValue("schemaNameInBrackets",
-                            String.format("[%s]", schemaName));
-                    me.setContextValue("remoteDirectory", directory);
-                    throw me;
-                }
-            }
-
-            String msg = "Unable to list tables (Manta directory)";
-            MantaPrestoRuntimeException re = new MantaPrestoRuntimeException(msg, e);
-            re.setContextValue("path", directory);
-            throw re;
-        }
+        return tableProvider.tableListForSchema(schemaName);
     }
 
     @Override
     public ConnectorTableHandle getTableHandle(final ConnectorSession session,
                                                final SchemaTableName tableName) {
-        final MantaSchemaTableName mantaTableName;
+        final MantaLogicalTable table = tableProvider
+                .getTable(tableName.getSchemaName(), tableName.getTableName());
 
-        if (tableName.getClass().equals(MantaSchemaTableName.class)) {
-            mantaTableName = (MantaSchemaTableName)tableName;
-        } else {
-            String directory = schemaMapping.get(tableName.getSchemaName());
-
-            if (directory == null) {
-                throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(
-                        tableName.getSchemaName());
-            }
-
-            // TODO: This probably won't work - let's find out if it is needed
-            mantaTableName = new MantaSchemaTableName(tableName.getSchemaName(),
-                    tableName.getTableName(), directory, tableName.getTableName());
-        }
-
-        if (!mantaClient.existsAndIsAccessible(mantaTableName.getObjectPath())) {
-            return null;
-        }
-
-        return mantaTableName;
+        return new MantaSchemaTableName(tableName.getSchemaName(), table);
     }
 
     @Override
@@ -213,9 +149,12 @@ public class MantaMetadata implements ConnectorMetadata {
         }
 
         MantaSchemaTableName tableName = (MantaSchemaTableName)tableHandle;
+        final MantaLogicalTable table = tableName.getTable();
 
-        List<? extends ColumnMetadata> columns = columnLister.listColumns(
-                tableName.getSchemaName(), tableName.getTableName());
+        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
+        final String objectPath = first.get().getPath();
+
+        List<? extends ColumnMetadata> columns = columnLister.listColumns(objectPath, table.getDataFileType());
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;
@@ -231,18 +170,15 @@ public class MantaMetadata implements ConnectorMetadata {
                     handle.getClass());
         }
 
-        MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
-        String objectPath = tableName.getObjectPath();
+        final MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
+        final MantaLogicalTable table = tableName.getTable();
 
-        if (!mantaClient.existsAndIsAccessible(objectPath)) {
-            String msg = "Table name (Manta directory and file path) didn't match an existing table";
-            MantaPrestoTableNotFoundException me = new MantaPrestoTableNotFoundException(tableName, msg);
-            me.addContextValue("objectPath", objectPath);
-            throw me;
-        }
+        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
 
-        List<MantaColumn> columns = columnLister.listColumns(
-                tableName.getSchemaName(), tableName.getTableName());
+        final String objectPath = first.get().getPath();
+
+        List<MantaColumn> columns = columnLister.listColumns(objectPath,
+                table.getDataFileType());
 
         ImmutableMap.Builder<String, ColumnHandle> builder = new ImmutableMap.Builder<>();
 
@@ -253,6 +189,26 @@ public class MantaMetadata implements ConnectorMetadata {
         return builder.build();
     }
 
+    private Optional<MantaObject> firstObjectForTable(final MantaSchemaTableName tableName,
+            final MantaLogicalTable table) {
+        final Optional<MantaObject> first;
+
+        try (Stream<MantaObject> find = mantaClient
+                .find(table.getRootPath(), table.directoryFilter())
+                .filter(table.filter())
+                .filter(obj -> !obj.isDirectory())) {
+            first = find.findFirst();
+        }
+
+        if (!first.isPresent()) {
+            String msg = "No objects found for table";
+            throw new MantaPrestoTableNotFoundException(
+                    tableName, msg);
+        }
+
+        return first;
+    }
+
     @Override
     public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(
             final ConnectorSession session,
@@ -260,22 +216,23 @@ public class MantaMetadata implements ConnectorMetadata {
         requireNonNull(prefix, "prefix is null");
         String schemaName = prefix.getSchemaName();
 
-        String directory = schemaMapping.get(schemaName);
-
-        if (directory == null) {
+        if (!schemaMapping.containsKey(schemaName)) {
             throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(schemaName);
         }
 
-        SchemaTableName table = new MantaSchemaTableName(schemaName,
-                prefix.getTableName(), directory, prefix.getTableName());
+        MantaLogicalTable table = tableProvider.getTable(schemaName, prefix.getTableName());
+        MantaSchemaTableName tableName = new MantaSchemaTableName(schemaName, table);
+
+        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
+        final String objectPath = first.get().getPath();
 
         List<? extends ColumnMetadata> columns = columnLister.listColumns(
-                schemaName, prefix.getTableName());
+                objectPath, table.getDataFileType());
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;
 
-        return ImmutableMap.of(table, columnMetadata);
+        return ImmutableMap.of(tableName, columnMetadata);
     }
 
     @Override

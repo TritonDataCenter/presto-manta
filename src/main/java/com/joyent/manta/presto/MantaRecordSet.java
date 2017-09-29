@@ -35,6 +35,7 @@ public class MantaRecordSet implements RecordSet {
     private final String objectPath;
     private final MantaClient mantaClient;
     private final ObjectMapper objectMapper;
+    private final MantaDataFileType dataFileType;
 
     public MantaRecordSet(final MantaSplit split,
                           final List<MantaColumn> columns,
@@ -44,14 +45,14 @@ public class MantaRecordSet implements RecordSet {
         this.columns = requireNonNull(columns, "column handles is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
         this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
+        this.dataFileType = requireNonNull(split.getDataFileType(), "data file type is null");
+        this.objectPath = requireNonNull(split.getObjectPath(), "object path is null");
 
         ImmutableList.Builder<Type> types = ImmutableList.builder();
         for (MantaColumn column : columns) {
             types.add(column.getType());
         }
         this.columnTypes = types.build();
-
-        this.objectPath = split.getObjectPath();
     }
 
     @Override
@@ -75,16 +76,14 @@ public class MantaRecordSet implements RecordSet {
         long totalBytes = in.getContentLength();
         CountingInputStream cin = new CountingInputStream(in);
 
-        MantaDataFileType type = MantaDataFileType.determineFileType(in);
-
-        switch (type) {
-            case LDJSON:
+        switch (dataFileType) {
+            case NDJSON:
                 return new MantaJsonRecordCursor(columns, objectPath,
                         totalBytes, cin, objectMapper);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
-                me.setContextValue("type", type);
+                me.setContextValue("dataFileType", dataFileType);
                 MantaPrestoExceptionUtils.annotateMantaObjectDetails(in, me);
                 throw me;
         }

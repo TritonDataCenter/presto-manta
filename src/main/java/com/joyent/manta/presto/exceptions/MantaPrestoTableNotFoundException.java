@@ -9,6 +9,7 @@ package com.joyent.manta.presto.exceptions;
 
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.TableNotFoundException;
+import com.joyent.manta.presto.MantaSchemaTableName;
 import org.apache.commons.lang3.exception.DefaultExceptionContext;
 import org.apache.commons.lang3.exception.ExceptionContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -32,18 +33,21 @@ public class MantaPrestoTableNotFoundException extends TableNotFoundException
     public MantaPrestoTableNotFoundException(final SchemaTableName tableName) {
         super(tableName);
         this.exceptionContext = new DefaultExceptionContext();
+        appendDefaultContext();
     }
 
     public MantaPrestoTableNotFoundException(final SchemaTableName tableName,
                                              final String message) {
         super(tableName, message);
         this.exceptionContext = new DefaultExceptionContext();
+        appendDefaultContext();
     }
 
     public MantaPrestoTableNotFoundException(final SchemaTableName tableName,
                                              final Throwable cause) {
         super(tableName, cause);
         this.exceptionContext = new DefaultExceptionContext();
+        appendDefaultContext();
     }
 
     public MantaPrestoTableNotFoundException(final SchemaTableName tableName,
@@ -51,6 +55,19 @@ public class MantaPrestoTableNotFoundException extends TableNotFoundException
                                              final Throwable cause) {
         super(tableName, message, cause);
         this.exceptionContext = new DefaultExceptionContext();
+        appendDefaultContext();
+    }
+
+    private void appendDefaultContext() {
+        SchemaTableName tableName = getTableName();
+
+        if (!(tableName instanceof MantaSchemaTableName)) {
+            return;
+        }
+
+        MantaSchemaTableName mantaTableName = (MantaSchemaTableName)tableName;
+
+        setContextValue("tableInfo", mantaTableName.getTable().toString());
     }
 
     /* All code below was copied from org.apache.commons.lang3.exception.ContextedException

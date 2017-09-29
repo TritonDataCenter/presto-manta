@@ -5,35 +5,34 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package com.joyent.manta.presto;
+package com.joyent.manta.presto.tables;
 
-import com.facebook.presto.spi.ConnectorSession;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
+import com.joyent.manta.presto.MantaPrestoTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.unitils.reflectionassert.ReflectionAssert;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.mockito.Mockito.mock;
+import static com.joyent.manta.presto.MantaDataFileType.NDJSON;
 
 @Test
-public class MantaMetadataIT {
+public class MantaLogicalTableProviderIT {
     private Injector injector;
+    private ObjectMapper objectMapper;
     private MantaClient mantaClient;
-    private MantaMetadata instance;
     private String testPathPrefix;
-    private ConnectorSession session;
+
 
     @BeforeClass
     public void before() throws IOException {
@@ -41,12 +40,11 @@ public class MantaMetadataIT {
 
         Map<String, String> emptyConfig = ImmutableMap.of(
                 "manta.schema.default", String.format(
-                        "~~/stor/java-manta-integration-tests/%s", randomDir));
+                        "~~/stor/java-manta-integration-tests/%s/", randomDir));
         injector = MantaPrestoTestUtils.createInjectorInstance(emptyConfig);
 
         mantaClient = injector.getInstance(MantaClient.class);
-        instance = injector.getInstance(MantaMetadata.class);
-        session = mock(ConnectorSession.class);
+        objectMapper = injector.getInstance(ObjectMapper.class);
 
         testPathPrefix = String.format("%s/stor/java-manta-integration-tests/%s/",
                 mantaClient.getContext().getMantaHomeDirectory(), randomDir);
@@ -61,36 +59,28 @@ public class MantaMetadataIT {
         }
     }
 
-    @AfterMethod
-    public void cleanUp() throws IOException {
-        if (mantaClient != null) {
-            mantaClient.deleteRecursive(testPathPrefix);
-            mantaClient.putDirectory(testPathPrefix, true);
-        }
-    }
+    public void canListTablesForDefaultSchema() throws IOException {
+        String schemaPath = testPathPrefix + UUID.randomUUID();
+        mantaClient.putDirectory(schemaPath);
 
-    public void canListSchemaNames() {
+        List<MantaLogicalTable> tables = ImmutableList.of(
+                new MantaLogicalTable("table-1", schemaPath, NDJSON),
+                new MantaLogicalTable("table-2", schemaPath, NDJSON),
+                new MantaLogicalTable("table-3", schemaPath, NDJSON)
+        );
 
-        List<String> schemas = instance.listSchemaNames(session);
-        List<String> expected = ImmutableList.of("default");
+        String definitionJson = objectMapper.writeValueAsString(tables);
+        String path = testPathPrefix + MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
+        mantaClient.put(path, definitionJson, StandardCharsets.UTF_8);
 
-        ReflectionAssert.assertLenientEquals(
-                "Schema's returned from Manta didn't match expected defaults",
-                expected, schemas);
-    }
+        MantaLogicalTableProvider tableProvider = injector.getInstance(MantaLogicalTableProvider.class);
 
-    public void willErrorNicelyIfSchemaIsNotFound() {
-        final String badSchema = "this-schema-is-not-found";
+        List<MantaLogicalTable> actual = ImmutableList.of(
+            tableProvider.getTable("default", "table-1"),
+            tableProvider.getTable("default", "table-2"),
+            tableProvider.getTable("default", "table-3")
+        );
 
-        boolean thrown = false;
-
-        try {
-            instance.listTables(session, badSchema);
-        } catch (MantaPrestoSchemaNotFoundException e) {
-            thrown = true;
-        }
-
-        Assert.assertTrue(thrown,
-                "Expected exception MantaPrestoSchemaNotFoundException wasn't thrown");
+        Assert.assertEqualsNoOrder(actual.toArray(), tables.toArray());
     }
 }

@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import com.joyent.manta.client.MantaObject;
@@ -25,10 +26,12 @@ public enum MantaDataFileType {
     /**
      * New line delimited JSON.
      */
-    LDJSON(new String[] {"json", "ndjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
+    @JsonProperty("NDJSON")
+    NDJSON(new String[] {"json", "ndjson", "ldjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
     /**
      * Comma separated value.
      */
+    @JsonProperty("CSV")
     CSV(new String[] {"csv"}, new String[] {"text/csv", "application/csv"});
 
     /**
@@ -82,7 +85,7 @@ public enum MantaDataFileType {
      */
     public static MantaDataFileType valueByExtension(final String extension) {
         requireNonNull(extension, "Extension is null");
-        return EXTENSION_LOOKUP.get(extension);
+        return EXTENSION_LOOKUP.get(extension.toLowerCase());
     }
 
     /**
@@ -93,7 +96,27 @@ public enum MantaDataFileType {
      */
     public static MantaDataFileType valueByMediaType(final String mediaType) {
         requireNonNull(mediaType, "Media type is null");
-        return MEDIA_TYPE_LOOKUP.get(mediaType);
+        return MEDIA_TYPE_LOOKUP.get(mediaType.toLowerCase());
+    }
+
+    public static MantaDataFileType searchAllValues(final String search) {
+        MantaDataFileType fromExtension = valueByExtension(search);
+
+        if (fromExtension != null) {
+            return fromExtension;
+        }
+
+        MantaDataFileType fromMediaType = valueByMediaType(search);
+
+        if (fromMediaType != null) {
+            return fromMediaType;
+        }
+
+        try {
+            return valueOf(search);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /**
@@ -103,7 +126,7 @@ public enum MantaDataFileType {
      * @return true if supported
      */
     public static boolean isSupportedFileTypeByExtension(final String extension) {
-        return EXTENSION_LOOKUP.containsKey(extension);
+        return EXTENSION_LOOKUP.containsKey(extension.toLowerCase());
     }
 
     /**
@@ -113,7 +136,7 @@ public enum MantaDataFileType {
      * @return true if supported
      */
     public static boolean isSupportFileTypeByMediaType(final String mediaType) {
-        return MEDIA_TYPE_LOOKUP.containsKey(mediaType);
+        return MEDIA_TYPE_LOOKUP.containsKey(mediaType.toLowerCase());
     }
 
     /**

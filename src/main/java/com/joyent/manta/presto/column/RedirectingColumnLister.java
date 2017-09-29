@@ -14,16 +14,13 @@ import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
-import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
-import com.joyent.manta.util.MantaUtils;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
@@ -31,12 +28,6 @@ import static java.util.Objects.requireNonNull;
  *
  */
 public class RedirectingColumnLister {
-
-    /**
-     * Map relating configured schema name to Manta directory path.
-     */
-    private final Map<String, String> schemaMapping;
-
     /**
      * Manta client instance.
      */
@@ -49,34 +40,24 @@ public class RedirectingColumnLister {
     /**
      * Creates a new instance with the required properties.
      *
-     * @param schemaMapping map relating configured schema name to Manta directory path
      * @param maxBytesPerLine maximum number of bytes to read per line
      * @param jsonLister lister instance for processing JSON columns
      * @param mantaClient Manta client instance
      */
     @Inject
-    public RedirectingColumnLister(@Named("SchemaMapping") final Map<String, String> schemaMapping,
-                                   @Named("MaxBytesPerLine") final Integer maxBytesPerLine,
+    public RedirectingColumnLister(@Named("MaxBytesPerLine") final Integer maxBytesPerLine,
                                    final MantaJsonFileColumnLister jsonLister,
                                    final MantaClient mantaClient) {
-        this.schemaMapping = requireNonNull(schemaMapping, "Schema mapping is null");
         this.maxBytesPerLine = requireNonNull(maxBytesPerLine, "Max bytes per line is null");
         this.jsonLister = requireNonNull(jsonLister, "Json lister is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
     }
 
-    public List<MantaColumn> listColumns(final String schemaName, final String tableName) {
-        requireNonNull(schemaName, "Schema name is null");
-        requireNonNull(tableName, "Table name is null");
-
-        String objectPath = objectPath(schemaName, tableName);
-
+    public List<MantaColumn> listColumns(final String objectPath, final MantaDataFileType type) {
         final String firstLine;
-        final MantaDataFileType type;
 
         try (MantaObjectInputStream in = objectStream(objectPath)) {
             firstLine = readFirstLine(in);
-            type = MantaDataFileType.determineFileType(in);
         } catch (IOException e) {
             String msg = "Error reading first line of file object";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
@@ -87,7 +68,7 @@ public class RedirectingColumnLister {
         final ColumnLister lister;
 
         switch (type) {
-            case LDJSON:
+            case NDJSON:
                 lister = jsonLister;
                 break;
             case CSV:
@@ -128,8 +109,6 @@ public class RedirectingColumnLister {
      * @return new stream instance containing data of file object
      */
     private MantaObjectInputStream objectStream(final String objectPath) {
-        MantaObjectInputStream in = null;
-
         try {
             MantaHttpHeaders headers = new MantaHttpHeaders();
             headers.setRange(String.format("bytes=0-%d", maxBytesPerLine));
@@ -141,24 +120,5 @@ public class RedirectingColumnLister {
 
             throw me;
         }
-    }
-
-    /**
-     * Resolves the object path of a remote Manta object based on the passed
-     * schema name and table name.
-     *
-     * @param schemaName Presto schema name
-     * @param tableName Table name
-     * @return path to file object in Manta
-     */
-    private String objectPath(final String schemaName, final String tableName) {
-        String directory = schemaMapping.get(schemaName);
-
-        if (directory == null) {
-            throw MantaPrestoSchemaNotFoundException.withNoDirectoryMessage(
-                    schemaName);
-        }
-        return MantaUtils.formatPath(directory
-                + MantaClient.SEPARATOR + tableName);
     }
 }

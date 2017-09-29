@@ -14,12 +14,12 @@ import org.testng.annotations.Test;
 public class MantaDataFileTypeTest {
     public void canSelectNDJsonFileTypeByJsonExtension() {
         MantaDataFileType type = MantaDataFileType.valueByExtension("json");
-        Assert.assertEquals(type, MantaDataFileType.LDJSON);
+        Assert.assertEquals(type, MantaDataFileType.NDJSON);
     }
 
     public void canSelectNDJsonFileTypeByNDJsonExtension() {
         MantaDataFileType type = MantaDataFileType.valueByExtension("ndjson");
-        Assert.assertEquals(type, MantaDataFileType.LDJSON);
+        Assert.assertEquals(type, MantaDataFileType.NDJSON);
     }
 
     public void canSelectCSVFileTypeByExtension() {
@@ -33,12 +33,12 @@ public class MantaDataFileTypeTest {
 
     public void canSelectNDJsonByJsonMediaType() {
         MantaDataFileType type = MantaDataFileType.valueByMediaType("application/json");
-        Assert.assertEquals(type, MantaDataFileType.LDJSON);
+        Assert.assertEquals(type, MantaDataFileType.NDJSON);
     }
 
     public void canSelectNDJsonByNDJsonMediaType() {
         MantaDataFileType type = MantaDataFileType.valueByMediaType("application/x-ndjson");
-        Assert.assertEquals(type, MantaDataFileType.LDJSON);
+        Assert.assertEquals(type, MantaDataFileType.NDJSON);
     }
 
     public void canSelectCSVByApplicationCSVMediaType() {

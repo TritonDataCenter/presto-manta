@@ -9,6 +9,7 @@ package com.joyent.manta.presto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Injector;
+import com.joyent.manta.presto.tables.MantaLogicalTable;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -27,8 +28,8 @@ public class MantaTableLayoutHandleTest {
 
     public void canSerializeToAndFromJson() throws IOException {
         ObjectMapper mapper = injector.getInstance(ObjectMapper.class);
-        MantaSchemaTableName tableName = new MantaSchemaTableName("schema", "table",
-                "/user/stor/foo", "table.json");
+        MantaLogicalTable table = new MantaLogicalTable("tablefoo", "/user/dir", MantaDataFileType.NDJSON);
+        MantaSchemaTableName tableName = new MantaSchemaTableName("schema", table);
         MantaTableLayoutHandle tableLayoutHandle = new MantaTableLayoutHandle(tableName);
         String json = mapper.writeValueAsString(tableLayoutHandle);
         Assert.assertNotNull(json);

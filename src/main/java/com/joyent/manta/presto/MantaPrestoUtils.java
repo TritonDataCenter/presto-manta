@@ -8,6 +8,7 @@
 package com.joyent.manta.presto;
 
 import com.google.common.net.MediaType;
+import com.joyent.manta.util.MantaUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +53,24 @@ public final class MantaPrestoUtils {
             LoggerFactory.getLogger(MantaPrestoUtils.class)
                     .warn("Illegal character set on content-type: {}", contentType);
             return defaultCharSet;
+        }
+    }
+
+    /**
+     * Substitutes the actual home directory for ~~ in a given path.
+     *
+     * @param path path to substitute
+     * @param homeDir home directory to replace ~~ with
+     * @return interpolate path
+     */
+    public static String substitudeHomeDirectory(final String path, final String homeDir) {
+        requireNonNull(path, "Path is null");
+        requireNonNull(homeDir, "Home directory is null");
+
+        if (path.startsWith("~~")) {
+            return MantaUtils.formatPath(homeDir + path.substring(2));
+        } else {
+            return MantaUtils.formatPath(path);
         }
     }
 }

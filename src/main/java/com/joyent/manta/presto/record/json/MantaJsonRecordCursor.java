@@ -121,7 +121,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
             me.setContextValue("objectPath", objectPath);
             me.addContextValue("line", lines);
 
-            LOG.info("Unable to parse line", me);
+            throw me;
         }
 
         return true;

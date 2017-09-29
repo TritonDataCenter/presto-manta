@@ -10,14 +10,17 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplitSource;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
-import com.facebook.presto.spi.FixedSplitSource;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import com.google.common.collect.ImmutableList;
+import com.joyent.manta.client.MantaClient;
+import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
+import com.joyent.manta.presto.tables.MantaLogicalTable;
 
 import javax.inject.Inject;
+import java.util.stream.Stream;
 
+import static com.joyent.manta.presto.tables.MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -25,10 +28,13 @@ import static java.util.Objects.requireNonNull;
  */
 public class MantaSplitManager implements ConnectorSplitManager {
     private final String connectorId;
+    private final MantaClient mantaClient;
 
     @Inject
-    public MantaSplitManager(final MantaConnectorId connectorId) {
+    public MantaSplitManager(final MantaConnectorId connectorId,
+                             final MantaClient mantaClient) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
+        this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
     }
 
     @Override
@@ -42,13 +48,15 @@ public class MantaSplitManager implements ConnectorSplitManager {
 
         MantaTableLayoutHandle layoutHandle = (MantaTableLayoutHandle)layout;
         MantaSchemaTableName tableName = layoutHandle.getTableName();
+        MantaLogicalTable table = tableName.getTable();
 
-        MantaSplit split = new MantaSplit(connectorId,
-                tableName.getSchemaName(), tableName.getTableName(),
-                tableName.getObjectPath());
+        Stream<MantaObject> objectStream = mantaClient.find(table.getRootPath(),
+                table.directoryFilter())
+                .filter(table.filter())
+                .filter(obj -> !obj.isDirectory())
+                .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME) );
 
-        // TODO: We only map one table to one file for now
-
-        return new FixedSplitSource(ImmutableList.of(split));
+        return new MantaStreamingSplitSource(connectorId, tableName.getSchemaName(),
+                tableName.getTableName(), table.getDataFileType(), objectStream);
     }
 }

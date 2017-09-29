@@ -24,7 +24,10 @@ import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
-import com.joyent.manta.util.MantaUtils;
+import com.joyent.manta.presto.tables.MantaLogicalTable;
+import com.joyent.manta.presto.tables.MantaLogicalTableDeserializer;
+import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
+import com.joyent.manta.presto.tables.MantaLogicalTableSerializer;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,14 +105,7 @@ public class MantaModule implements Module {
             }
 
             if (StringUtils.isNotBlank(parts[2]) && StringUtils.isNotBlank(val)) {
-                final String path;
-
-                if (val.startsWith("~~")) {
-                    path = MantaUtils.formatPath(homeDir + val.substring(2));
-                } else {
-                    path = MantaUtils.formatPath(val);
-                }
-
+                final String path = MantaPrestoUtils.substitudeHomeDirectory(val, homeDir);
                 mapToUpdate.put(parts[2], path);
             }
         }
@@ -163,6 +159,9 @@ public class MantaModule implements Module {
         binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).in(Scopes.SINGLETON);
         binder.bind(MantaConnector.class).in(Scopes.SINGLETON);
         binder.bind(MantaConnectorId.class).toInstance(new MantaConnectorId(connectorId));
+
+        binder.bind(MantaLogicalTableProvider.class).in(Scopes.SINGLETON);
+
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaJsonFileColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaMetadata.class).in(Scopes.SINGLETON);
@@ -170,5 +169,9 @@ public class MantaModule implements Module {
         binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);
 
         jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaTypeDeserializer.class);
+        jsonBinder(binder).addDeserializerBinding(MantaLogicalTable.class)
+                .to(MantaLogicalTableDeserializer.class).in(Scopes.SINGLETON);
+        jsonBinder(binder).addSerializerBinding(MantaLogicalTable.class)
+                .to(MantaLogicalTableSerializer.class).in(Scopes.SINGLETON);
     }
 }
