@@ -23,7 +23,7 @@ manta.schema.another=~~/stor/another-schema
     "name":"logical-table-1",
     "rootPath":"~~/stor/json-examples",
     "dataFileType":"NDJSON",
-    "directoryFilterRegex":"",
+    "directoryFilterRegex":"^.*\\/server\\/.*$",
     "filterRegex":""
   },
   {
@@ -31,7 +31,18 @@ manta.schema.another=~~/stor/another-schema
     "rootPath":"~~/stor/analytics",
     "dataFileType":"NDJSON",
     "directoryFilterRegex":"",
-    "filterRegex":""
+    "filterRegex":"^.*\\.log$"
   }
 ]
 ```
+
+Notes about file format:
+
+ * The `name` field refers to the unique table name for the logical table definition.
+ * The `rootPath` field is the root path in Manta to search for files to query.
+ * The `dataFileType` field defines the structure of data stored in each file.
+ * The `directoryFilterRegex` field defines a Java compatible regular expression
+   that can filter subdirectories and files from the `rootPath`. This allows the
+   limiting of the search space for subdirectory traversal.
+ * The `filterRegex` field defines a Java compatible regular expression that can
+   filter all files from the `rootPath`. 
