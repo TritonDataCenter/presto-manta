@@ -50,7 +50,7 @@ in other lines and files, you will get inconsistent results or errors.
 For non-compressed data files the connector will do a HTTP range request on the
 data file in order to avoid downloading the entire file to get the first line.
 The setting for the maximum number of bytes per line is configurable via the
-`manta.max_bytes_per_line` parameter. The default value is `10_240`.
+`manta.max_bytes_per_line` parameter. The default value is `10240`.
 
 #### Bandwidth Considerations
 
