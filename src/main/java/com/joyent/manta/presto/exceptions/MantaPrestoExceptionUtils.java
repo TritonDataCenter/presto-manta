@@ -12,6 +12,8 @@ import org.apache.commons.lang3.exception.ExceptionContext;
 
 /**
  * Class providing utility functions for exception classes.
+ *
+ * @since 1.0.0
  */
 public final class MantaPrestoExceptionUtils {
     /**

@@ -13,6 +13,8 @@ import org.apache.commons.lang3.exception.ExceptionContext;
 /**
  * Base exception class for unchecked exceptions thrown within the Manta Presto
  * connector.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoRuntimeException extends ContextedRuntimeException {
     private static final long serialVersionUID = -1779608808911106123L;

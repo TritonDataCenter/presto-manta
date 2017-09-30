@@ -23,7 +23,9 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Class the provides Connector instances configured for use with Manta.
+ * Class the provides {@link Connector} instances configured for use with Manta.
+ *
+ * @since 1.0.0
  */
 public class MantaConnectorFactory implements ConnectorFactory {
     @Override
@@ -36,6 +38,17 @@ public class MantaConnectorFactory implements ConnectorFactory {
         return new MantaHandleResolver();
     }
 
+    /**
+     * Builds a Guice injector and configures it with the Guice modules needed
+     * to setup the plugin.
+     *
+     * @param connectorId connector id used for debugging
+     * @param config raw configuration parameters from Presto catalog
+     * @param context context containing type manager
+     * @return a fully configured Guice injector
+     *
+     * @throws Exception thrown when anything goes wrong when instantiating
+     */
     static Injector buildInjector(final String connectorId,
                            final Map<String, String> config,
                            final ConnectorContext context) throws Exception {
@@ -58,8 +71,7 @@ public class MantaConnectorFactory implements ConnectorFactory {
         try {
             Injector injector = buildInjector(connectorId, config, context);
             return injector.getInstance(MantaConnector.class);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             final String msg = "Error creating new connector";
             MantaPrestoRuntimeException re =
                     new MantaPrestoRuntimeException(msg, e);

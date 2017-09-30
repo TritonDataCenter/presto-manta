@@ -27,12 +27,11 @@ import static java.util.Objects.requireNonNull;
  * Manta specific implementation of {@link Connector} that acts to provide a
  * means to connect to Manta within the Presto API. This class must be shutdown
  * when it is no longer in use.
+ *
+ * @since 1.0.0
  */
 public class MantaConnector implements Connector {
-    /**
-     * Logger instance.
-     */
-    private static final Logger log = LoggerFactory.getLogger(MantaConnector.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MantaConnector.class);
 
     private final LifeCycleManager lifeCycleManager;
     private final MantaMetadata metadata;
@@ -40,6 +39,15 @@ public class MantaConnector implements Connector {
     private final MantaRecordSetProvider recordSetProvider;
     private final MantaClient mantaClient;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param lifeCycleManager object that allows you to hook in lifecycle events
+     * @param metadata object that provides metadata operations against schemas and tables
+     * @param splitManager object that determines where to "split" data
+     * @param recordSetProvider object that provides record sets based on table's columns
+     * @param mantaClient object that allows for direct operations on Manta
+     */
     @Inject
     public MantaConnector(final LifeCycleManager lifeCycleManager,
                           final MantaMetadata metadata,
@@ -81,7 +89,7 @@ public class MantaConnector implements Connector {
         try {
             lifeCycleManager.stop();
         } catch (Exception e) {
-            log.error("Error shutting down Manta Presto connector", e);
+            LOG.error("Error shutting down Manta Presto connector", e);
         }
     }
 

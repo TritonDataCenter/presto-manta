@@ -10,8 +10,13 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
 /**
+ * A singleton transaction handle used internally by Presto.
  *
+ * @since 1.0.0
  */
 public enum MantaTransactionHandle implements ConnectorTransactionHandle {
+    /**
+     * Single global instance.
+     */
     INSTANCE;
 }

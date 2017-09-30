@@ -22,28 +22,24 @@ import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
-import com.joyent.manta.presto.exceptions.MantaPrestoTableNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 
-import static com.joyent.manta.presto.tables.MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -51,23 +47,33 @@ import static java.util.Objects.requireNonNull;
  * class contains the domain mapping logic between Presto and Manta.</p>
  */
 public class MantaMetadata implements ConnectorMetadata {
-    /**
-     * Logger instance.
-     */
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     private final String connectorId;
     private final MantaClient mantaClient;
     private final RedirectingColumnLister columnLister;
+
     /**
      * Map relating configured schema name to Manta directory path.
      */
     private final Map<String, String> schemaMapping;
 
+    /**
+     * Provider object that allows you to look up tables by properties.
+     */
     private final MantaLogicalTableProvider tableProvider;
 
-    private final ObjectToTableDirectoryListingFilter tableListingFilter;
-
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param connectorId presto connection id object for debugging
+     * @param columnLister listing instance that will redirect to the correct
+     *                     lister for the data file type
+     * @param schemaMapping schema to directory path mapping
+     * @param tableProvider provider object that allows you to look up tables
+     *                      by properties
+     * @param mantaClient object that allows for direct operations on Manta
+     */
     @Inject
     public MantaMetadata(final MantaConnectorId connectorId,
                          final RedirectingColumnLister columnLister,
@@ -78,7 +84,6 @@ public class MantaMetadata implements ConnectorMetadata {
         this.columnLister = requireNonNull(columnLister, "column lister is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client instance is null");
         this.tableProvider = requireNonNull(tableProvider, "table provider is null");
-        this.tableListingFilter = new ObjectToTableDirectoryListingFilter(mantaClient);
         this.schemaMapping = schemaMapping;
     }
 
@@ -152,11 +157,8 @@ public class MantaMetadata implements ConnectorMetadata {
 
         MantaSchemaTableName tableName = (MantaSchemaTableName)tableHandle;
         final MantaLogicalTable table = tableName.getTable();
-
-        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
-        final String objectPath = first.get().getPath();
-
-        List<? extends ColumnMetadata> columns = columnLister.listColumns(objectPath, table.getDataFileType());
+        final List<? extends ColumnMetadata> columns = columnLister.listColumns(
+                tableName, table);
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;
@@ -174,13 +176,7 @@ public class MantaMetadata implements ConnectorMetadata {
 
         final MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
         final MantaLogicalTable table = tableName.getTable();
-
-        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
-
-        final String objectPath = first.get().getPath();
-
-        List<MantaColumn> columns = columnLister.listColumns(objectPath,
-                table.getDataFileType());
+        final List<MantaColumn> columns = columnLister.listColumns(tableName, table);
 
         ImmutableMap.Builder<String, ColumnHandle> builder = new ImmutableMap.Builder<>();
 
@@ -189,28 +185,6 @@ public class MantaMetadata implements ConnectorMetadata {
         }
 
         return builder.build();
-    }
-
-    private Optional<MantaObject> firstObjectForTable(final MantaSchemaTableName tableName,
-            final MantaLogicalTable table) {
-        final Optional<MantaObject> first;
-
-        try (Stream<MantaObject> find = mantaClient
-                .find(table.getRootPath(), table.directoryFilter())
-                .filter(table.filter())
-                .filter(obj -> !obj.isDirectory())
-                .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME))
-                .sorted(Comparator.comparingLong(MantaObject::getContentLength))) {
-            first = find.findFirst();
-        }
-
-        if (!first.isPresent()) {
-            String msg = "No objects found for table";
-            throw new MantaPrestoTableNotFoundException(
-                    tableName, msg);
-        }
-
-        return first;
     }
 
     @Override
@@ -226,12 +200,8 @@ public class MantaMetadata implements ConnectorMetadata {
 
         MantaLogicalTable table = tableProvider.getTable(schemaName, prefix.getTableName());
         MantaSchemaTableName tableName = new MantaSchemaTableName(schemaName, table);
-
-        final Optional<MantaObject> first = firstObjectForTable(tableName, table);
-        final String objectPath = first.get().getPath();
-
-        List<? extends ColumnMetadata> columns = columnLister.listColumns(
-                objectPath, table.getDataFileType());
+        final List<? extends ColumnMetadata> columns = columnLister.listColumns(
+                tableName, table);
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;

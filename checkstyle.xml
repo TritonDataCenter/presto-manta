@@ -77,10 +77,14 @@
             <property name="allowThrowsTagsForSubclasses" value="true"/>
             <property name="suppressLoadErrors" value="true"/>
             <property name="allowMissingPropertyJavadoc" value="true"/>
-            <property name="excludeScope" value="package"/>
+            <property name="excludeScope" value="private"/>
+            <property name="ignoreMethodNamesRegex" value="^.*Exception$" />
         </module>
         <module name="JavadocType" />
-        <module name="JavadocVariable"/>
+        <module name="JavadocVariable">
+            <property name="ignoreNamePattern" value="LOG" />
+            <property name="scope" value="public" />
+        </module>
         <module name="JavadocStyle" />
 
         <!-- Checks for Naming Conventions.                  -->
@@ -107,7 +111,7 @@
         <!-- Checks for Size Violations.                    -->
         <!-- See http://checkstyle.sf.net/config_sizes.html -->
         <module name="LineLength">
-            <property name="max" value="120" />
+            <property name="max" value="140" />
             <property name="tabWidth" value="4" />
         </module>
         <module name="MethodLength" />

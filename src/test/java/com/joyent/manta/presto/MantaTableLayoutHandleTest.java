@@ -10,6 +10,7 @@ package com.joyent.manta.presto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Injector;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;

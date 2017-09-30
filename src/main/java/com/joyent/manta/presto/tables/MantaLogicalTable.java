@@ -21,25 +21,63 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
+ * Class representing the logical mapping of many file objects on Manta to a
+ * single table with Presto.
  *
+ * @since 1.0.0
  */
 public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     /**
      * Unique name of table.
      */
     private final String tableName;
+
+    /**
+     * The root path in which all of the filters will be applied.
+     */
     private final String rootPath;
+
+    /**
+     * The data type of which all files will conform.
+     */
     private final MantaDataFileType dataFileType;
+
+    /**
+     * A regular expression for pre-filtering directories so that the contents
+     * of the directories will not need to be listed.
+     */
     private final Pattern directoryFilterRegex;
+
+    /**
+     * A regular expression that will filter all results from the root path.
+     */
     private final Pattern filterRegex;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param tableName table name and schema that maps to the logical table
+     * @param rootPath path in which all of the filters will be applied
+     * @param dataFileType data type of which all files will conform
+     */
     public MantaLogicalTable(final String tableName,
                              final String rootPath,
                              final MantaDataFileType dataFileType) {
         this(tableName, rootPath, dataFileType, (Pattern)null, null);
     }
 
+    /**
+     * Creates a new instance based on the specified parameters. This
+     * constructor is typically used by JSON deserialization.
+     *
+     * @param tableName table name and schema that maps to the logical table
+     * @param rootPath path in which all of the filters will be applied
+     * @param dataFileType data type of which all files will conform
+     * @param directoryFilterRegex regex for pre-filtering directories
+     * @param filterRegex regex for filtering all dirs and files from root path
+     */
     @JsonCreator
+    @SuppressWarnings("AvoidInlineConditionals")
     public MantaLogicalTable(@JsonProperty("name") final String tableName,
                              @JsonProperty("rootPath") final String rootPath,
                              @JsonProperty("dataFileType") final MantaDataFileType dataFileType,
@@ -50,6 +88,15 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
                 filterRegex == null ? null : Pattern.compile(filterRegex));
     }
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param tableName table name and schema that maps to the logical table
+     * @param rootPath path in which all of the filters will be applied
+     * @param dataFileType data type of which all files will conform
+     * @param directoryFilterRegex regex for pre-filtering directories
+     * @param filterRegex regex for filtering all dirs and files from root path
+     */
     public MantaLogicalTable(final String tableName,
                              final String rootPath,
                              final MantaDataFileType dataFileType,
@@ -82,6 +129,11 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         return directoryFilterRegex;
     }
 
+    /**
+     * Predicate that applies the directory filter regex if it is not null.
+     *
+     * @return directory filter regex predicate or always true predicate
+     */
     @JsonIgnore
     public Predicate<? super MantaObject> directoryFilter() {
         if (directoryFilterRegex != null) {
@@ -97,6 +149,11 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         return filterRegex;
     }
 
+    /**
+     * Predicate that applies the root path filter regex if it is not null.
+     *
+     * @return filter regex predicate or always true predicate
+     */
     @JsonIgnore
     public Predicate<? super MantaObject> filter() {
         if (filterRegex != null) {
@@ -132,7 +189,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         return Objects.equals(tableName, that.tableName)
                 && Objects.equals(rootPath, that.rootPath)
                 && Objects.equals(dataFileType, that.dataFileType)
-                && Objects.equals(Objects.toString(directoryFilterRegex, "<null>") ,
+                && Objects.equals(Objects.toString(directoryFilterRegex, "<null>"),
                                   Objects.toString(that.directoryFilterRegex, "<null>"))
                 && Objects.equals(Objects.toString(filterRegex, "<null>"),
                                   Objects.toString(that.filterRegex, "<null>"));

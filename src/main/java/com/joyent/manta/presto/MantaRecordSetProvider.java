@@ -25,20 +25,30 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * Class that provides {@link RecordSet} instances based on the columns
+ * associated with a table.
  *
+ * @since 1.0.0
  */
 public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
     private final String connectorId;
     private final MantaClient mantaClient;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper mapper;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param connectorId presto connection id object for debugging
+     * @param mantaClient object that allows for direct operations on Manta
+     * @param mapper Jackson JSON serialization / deserialization object
+     */
     @Inject
     public MantaRecordSetProvider(final MantaConnectorId connectorId,
                                   final MantaClient mantaClient,
-                                  final ObjectMapper objectMapper) {
+                                  final ObjectMapper mapper) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
-        this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
+        this.mapper = requireNonNull(mapper, "object mapper is null");
     }
 
     @Override
@@ -59,7 +69,7 @@ public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
         }
 
         return new MantaRecordSet(mantaSplit, handles.build(), mantaClient,
-                objectMapper);
+                mapper);
     }
 
     @Override

@@ -21,6 +21,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Enum indicating the type of file that will be processed.
+ *
+ * @since 1.0.0
  */
 public enum MantaDataFileType {
     /**
@@ -72,6 +74,12 @@ public enum MantaDataFileType {
         MEDIA_TYPE_LOOKUP = mediaTypeMapBuilder.build();
     }
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param extensions file extensions to associate with data type
+     * @param mediaTypes media types (from content-type) to associate with data-type
+     */
     MantaDataFileType(final String[] extensions, final String[] mediaTypes) {
         this.extensions = extensions;
         this.mediaTypes = mediaTypes;
@@ -99,6 +107,13 @@ public enum MantaDataFileType {
         return MEDIA_TYPE_LOOKUP.get(mediaType.toLowerCase());
     }
 
+    /**
+     * Searches extentions, content-type and enum definition for matching
+     * string and returns the data type associated with the search value.
+     *
+     * @param search string to match
+     * @return matching enum or null if not found
+     */
     public static MantaDataFileType searchAllValues(final String search) {
         MantaDataFileType fromExtension = valueByExtension(search);
 
@@ -135,7 +150,7 @@ public enum MantaDataFileType {
      * @param mediaType media type to check
      * @return true if supported
      */
-    public static boolean isSupportFileTypeByMediaType(final String mediaType) {
+    public static boolean isSupportedFileTypeByMediaType(final String mediaType) {
         return MEDIA_TYPE_LOOKUP.containsKey(mediaType.toLowerCase());
     }
 

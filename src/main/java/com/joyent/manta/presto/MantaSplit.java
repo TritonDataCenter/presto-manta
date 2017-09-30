@@ -18,7 +18,10 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * {@link ConnectorSplit} implementation that represent a single file object
+ * within Manta.
  *
+ * @since 1.0.0
  */
 public class MantaSplit implements ConnectorSplit {
     private final String connectorId;
@@ -27,6 +30,15 @@ public class MantaSplit implements ConnectorSplit {
     private final String objectPath;
     private final MantaDataFileType dataFileType;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param connectorId presto connection id object for debugging
+     * @param schemaName schema as defined in Presto catalog configuration
+     * @param tableName table as defined in table definition file
+     * @param objectPath path to object in Manta
+     * @param dataFileType data type of all objects in table
+     */
     @JsonCreator
     public MantaSplit(@JsonProperty("connectorId") final String connectorId,
                       @JsonProperty("schemaName") final String schemaName,

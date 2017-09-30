@@ -16,6 +16,7 @@ import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.exceptions.MantaPrestoUnexpectedClass;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 
 import javax.inject.Inject;
 import java.util.stream.Stream;
@@ -24,12 +25,21 @@ import static com.joyent.manta.presto.tables.MantaLogicalTableProvider.TABLE_DEF
 import static java.util.Objects.requireNonNull;
 
 /**
+ * Class that creates a new {@link ConnectorSplitSource} per file object in
+ * the Manta logical table in which we are operating.
  *
+ * @since 1.0.0
  */
 public class MantaSplitManager implements ConnectorSplitManager {
     private final String connectorId;
     private final MantaClient mantaClient;
 
+    /**
+     * Creates a new instance.
+     *
+     * @param connectorId connector id used for debugging
+     * @param mantaClient manta client allowing for direct operation on Manta
+     */
     @Inject
     public MantaSplitManager(final MantaConnectorId connectorId,
                              final MantaClient mantaClient) {

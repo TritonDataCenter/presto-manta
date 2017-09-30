@@ -33,7 +33,10 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 
 /**
+ * {@link RecordCursor} implementation that reads each new line of JSON into
+ * a single row and columns.
  *
+ * @since 1.0.0
  */
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
@@ -49,18 +52,27 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     private Map<Integer, JsonNode> row;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param columns list of columns in table
+     * @param objectPath path to object in Manta
+     * @param totalBytes total number of bytes in source object
+     * @param countingStream input stream that counts the number of bytes processed
+     * @param mapper Jackson JSON serialization / deserialization object
+     */
     public MantaJsonRecordCursor(final List<MantaColumn> columns,
                                  final String objectPath,
                                  final Long totalBytes,
                                  final CountingInputStream countingStream,
-                                 final ObjectMapper objectMapper) {
+                                 final ObjectMapper mapper) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.totalBytes = totalBytes;
         this.countingStream = countingStream;
 
         try {
-            this.lineItr = objectMapper.readerFor(ObjectNode.class).readValues(countingStream);
+            this.lineItr = mapper.readerFor(ObjectNode.class).readValues(countingStream);
         } catch (IOException e) {
             String msg = "Unable to create a line iterator JSON parser";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);

@@ -15,9 +15,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
+ * Class representing a single column within a logical table.
  *
+ * @since 1.0.0
  */
 public class MantaColumn extends ColumnMetadata implements ColumnHandle {
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param name name of column
+     * @param type Presto type of column
+     * @param extraInfo additional information about column (eg JSON data type)
+     */
     @JsonCreator
     public MantaColumn(@JsonProperty("name") final String name,
                        @JsonProperty("type") final Type type,

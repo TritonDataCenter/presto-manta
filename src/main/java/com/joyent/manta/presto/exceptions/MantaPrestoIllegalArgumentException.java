@@ -17,6 +17,8 @@ import java.util.Set;
 /**
  * Runtime exception indicating that indicate that a method has been passed an
  * illegal or inappropriate argument.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoIllegalArgumentException extends IllegalArgumentException
         implements ExceptionContext {

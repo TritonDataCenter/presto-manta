@@ -14,6 +14,8 @@ import java.util.Collections;
 
 /**
  * Plugin definition class for the Manta Presto Connector.
+ *
+ * @since 1.0.0
  */
 public class MantaPlugin implements Plugin {
     @Override

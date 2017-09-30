@@ -14,7 +14,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
-import com.joyent.manta.presto.MantaSchemaTableName;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoTableNotFoundException;
 import com.joyent.manta.util.MantaUtils;
@@ -32,29 +31,57 @@ import java.util.stream.Collectors;
 import static com.joyent.manta.client.MantaClient.SEPARATOR;
 
 /**
+ * Class that provides instances of {@link MantaLogicalTable} based on reading
+ * the <code>presto-tables.json</code> file associated with a schema.
  *
+ * @since 1.0.0
  */
 public class MantaLogicalTableProvider {
+    /**
+     * Filename for table definition file per schema. This file should be located
+     * within the schema directory.
+     */
     public static final String TABLE_DEFINITION_FILENAME = "presto-tables.json";
 
+    /**
+     * Cache of the table definition file object ({@link MantaLogicalTable})
+     * per schema.
+     */
     private final Cache<String, Map<String, MantaLogicalTable>> tableListCache =
             CacheBuilder.newBuilder()
                     .expireAfterWrite(1, TimeUnit.MINUTES).build();
+
+    /**
+     * Mapping of schema name to directory path as configured within the Presto
+     * catalog configuration file.
+     */
     private final Map<String, String> schemaMapping;
+
+    /**
+     * Jackson JSON serializer / deserializer.
+     */
     private final ObjectMapper objectMapper;
+
+    /**
+     * Manta client instance that allows for direct operations against Manta.
+     */
     private final MantaClient mantaClient;
 
+    /**
+     * {@link Callable} implementation that allows for the asynchronous reading
+     * and parsing of a <code>presto-tables.json</code> file.
+     */
     private final class TableDefinitionLoader implements Callable<Map<String, MantaLogicalTable>> {
         private final String pathToDefinition;
 
-        public TableDefinitionLoader(final String pathToDefinition) {
+        TableDefinitionLoader(final String pathToDefinition) {
             this.pathToDefinition = pathToDefinition;
         }
 
         @Override
         public Map<String, MantaLogicalTable> call() throws Exception {
             try (MantaObjectInputStream in = mantaClient.getAsInputStream(pathToDefinition)) {
-                TypeReference type = new TypeReference<Set<MantaLogicalTable>>() {};
+                TypeReference type = new TypeReference<Set<MantaLogicalTable>>() { };
                 Set<MantaLogicalTable> tables = objectMapper.readValue(in, type);
 
                 return tables.stream().collect(Collectors.toMap(MantaLogicalTable::getTableName, item -> item));
@@ -62,6 +89,13 @@ public class MantaLogicalTableProvider {
         }
     }
 
+    /**
+     * Creates a new instance based on the passed parameters.
+     *
+     * @param schemaMapping mapping of schema name to directory path
+     * @param objectMapper Jackson JSON serializer / deserializer.
+     * @param mantaClient manta client instance
+     */
     @Inject
     public MantaLogicalTableProvider(@Named("SchemaMapping") final Map<String, String> schemaMapping,
                                      final ObjectMapper objectMapper,
@@ -71,6 +105,15 @@ public class MantaLogicalTableProvider {
         this.mantaClient = mantaClient;
     }
 
+    /**
+     * Get a table based on schema and name.
+     *
+     * @param schemaName schema as defined in Presto catalog configuration
+     * @param tableName table name as defined in the tables definition file
+     * @return object representing a logical table
+     *
+     * @throws MantaPrestoTableNotFoundException when the table can't be found
+     */
     public MantaLogicalTable getTable(final String schemaName, final String tableName) {
         MantaLogicalTable table = tablesForSchema(schemaName).get(tableName);
 
@@ -83,6 +126,15 @@ public class MantaLogicalTableProvider {
         return table;
     }
 
+    /**
+     * Gets a {@link Map} with keys of the table name and values of the
+     * actual {@link MantaLogicalTable} instances.
+     *
+     * @param schemaName schema as defined in Presto catalog configuration
+     * @return map of table names to tables
+     *
+     * @throws MantaPrestoSchemaNotFoundException when no mapping can be found for schema
+     */
     public Map<String, MantaLogicalTable> tablesForSchema(final String schemaName) {
         final String pathToDefinition = pathToTableDefinition(schemaName);
         final TableDefinitionLoader loader = new TableDefinitionLoader(pathToDefinition);
@@ -100,15 +152,28 @@ public class MantaLogicalTableProvider {
         }
     }
 
+    /**
+     * Gets a sorted list of all {@link MantaSchemaTableName} instances
+     * associated with the specified schema.
+     *
+     * @param schemaName schema as defined in Presto catalog configuration
+     * @return sorted list (by name) of all tables for a schema
+     *
+     * @throws MantaPrestoSchemaNotFoundException when no mapping can be found for schema
+     */
     public List<SchemaTableName> tableListForSchema(final String schemaName) {
         return tablesForSchema(schemaName)
                 .values()
                 .stream()
                 .sorted()
-                .map(t -> new SchemaTableName(schemaName, t.getTableName()))
+                .map(t -> new MantaSchemaTableName(schemaName, t))
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Creates the Manta directory path to the tables definition file based
+     * on a schema's directory mapping.
+     */
     private String pathToTableDefinition(final String schemaName) {
         final String dir = schemaMapping.get(schemaName);
 

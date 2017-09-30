@@ -18,6 +18,8 @@ import java.util.Set;
 /**
  * Runtime exception indicating that a schema couldn't be found at the specified
  * path.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoSchemaNotFoundException extends SchemaNotFoundException
         implements ExceptionContext {
@@ -48,6 +50,13 @@ public class MantaPrestoSchemaNotFoundException extends SchemaNotFoundException
         this.exceptionContext = new DefaultExceptionContext();
     }
 
+    /**
+     * Helper instance creation method that creates a new exception for when
+     * there is no entry for a schema in our configuration.
+     *
+     * @param schemaName schema name to associate with exception
+     * @return new exception instance
+     */
     public static MantaPrestoSchemaNotFoundException withNoDirectoryMessage(final String schemaName) {
         String msg = "No Manta directory that maps to the configured value "
                 + "was found for the specified schema. Make sure that you "

@@ -16,10 +16,17 @@ import javax.inject.Provider;
 /**
  * Provides a configured instance of {@link MantaClient}. Remember, you will
  * need to close this instance.
+ *
+ * @since 1.0.0
  */
 public class MantaClientProvider implements Provider<MantaClient> {
     private final ConfigContext config;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param config Manta configuration context
+     */
     @Inject
     public MantaClientProvider(final ConfigContext config) {
         this.config = config;

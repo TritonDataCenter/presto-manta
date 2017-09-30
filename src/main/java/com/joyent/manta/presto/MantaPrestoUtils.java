@@ -18,6 +18,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Utility class that provides commonly used methods.
+ *
+ * @since 1.0.0
  */
 public final class MantaPrestoUtils {
     /**
@@ -29,6 +31,7 @@ public final class MantaPrestoUtils {
     /**
      * Extracts the media type without parameters from a HTTP content type.
      * @param contentType non-null content type as string
+     * @return media type as string
      */
     public static String extractMediaTypeFromContentType(final String contentType) {
         requireNonNull(contentType, "Content type is null");

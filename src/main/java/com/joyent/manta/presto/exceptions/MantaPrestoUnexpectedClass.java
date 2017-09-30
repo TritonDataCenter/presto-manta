@@ -10,6 +10,8 @@ package com.joyent.manta.presto.exceptions;
 /**
  * Runtime exception thrown when the wrong instance of a class is passed as an
  * argument to a method.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoUnexpectedClass extends MantaPrestoIllegalArgumentException {
     private static final long serialVersionUID = 3689129445019722088L;

@@ -7,7 +7,6 @@
  */
 package com.joyent.manta.presto;
 
-import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -46,7 +45,7 @@ public class MantaModule implements Module {
     /**
      * Logger instance.
      */
-    private static final Logger log = LoggerFactory.getLogger(MantaModule.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MantaModule.class);
 
     /**
      * Default maximum number of bytes per line is 10k.
@@ -61,6 +60,14 @@ public class MantaModule implements Module {
     private final Map<String, String> schemaMapping = new HashMap<>();
     private final Integer maxBytesPerLine;
 
+    /**
+     * Creates a new instance with the specified parameters.
+     *
+     * @param connectorId Presto connection id object for debugging
+     * @param typeManager type manager associated with
+     *                    Presto {@link .facebook.presto.spi.connector.ConnectorContext}
+     * @param configParams Presto catalog configuration parameters
+     */
     public MantaModule(final String connectorId,
                        final TypeManager typeManager,
                        final Map<String, String> configParams) {
@@ -77,23 +84,26 @@ public class MantaModule implements Module {
             maxBytesPerLine = DEFAULT_MAX_BYTES_PER_LINE;
         }
 
-        log.debug("Manta Configuration: {}", this.config);
+        LOG.debug("Manta Configuration: {}", this.config);
     }
 
     /**
-     * Reads through the presto catalog configuration and maps the schema
+     * Reads through the presto catalog configuration and maps the schema.
      *
      * @param config map to read configuration from
      * @param mapToUpdate map to add schema information to
+     * @param homeDir directory to interpolate ~~ as
      */
     static void addToSchemaMapping(final Map<String, String> config,
         final Map<String, String> mapToUpdate, final String homeDir) {
+        final int noOfDots = 3;
+
         for (final Map.Entry<String, String> entry : config.entrySet()) {
             String key = entry.getKey();
             String val = entry.getValue();
-            String[] parts = StringUtils.split(key, ".", 3);
+            String[] parts = StringUtils.split(key, ".", noOfDots);
 
-            if (parts.length != 3) {
+            if (parts.length != noOfDots) {
                 continue;
             }
 
@@ -109,8 +119,8 @@ public class MantaModule implements Module {
             }
         }
 
-        if (log.isDebugEnabled()) {
-            log.debug("The following schema mappings were added:\n{}",
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("The following schema mappings were added:\n{}",
                     Joiner.on('\n').withKeyValueSeparator(": ").join(mapToUpdate));
         }
     }
@@ -144,7 +154,7 @@ public class MantaModule implements Module {
 
     @Override
     public void configure(final Binder binder) {
-        binder.bind(new TypeLiteral<Map<String, String>>(){})
+        binder.bind(new TypeLiteral<Map<String, String>>() { })
                 .annotatedWith(Names.named("SchemaMapping"))
                 .toInstance(ImmutableMap.copyOf(schemaMapping));
 
@@ -167,7 +177,6 @@ public class MantaModule implements Module {
         binder.bind(MantaSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);
 
-        jsonBinder(binder).addDeserializerBinding(Type.class).to(MantaTypeDeserializer.class);
         /* We use a custom deserializer in order to provide more informative errors
          * and flexible parsing to users who are manually writing presto-tables.json
          * files. */

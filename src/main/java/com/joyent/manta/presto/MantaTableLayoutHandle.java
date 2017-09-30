@@ -10,16 +10,25 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Objects;
 
 /**
+ * {@link ConnectorTableLayoutHandle} implementation that represents a single
+ * table by encoding a table name, schema and Manta logical table attributes.
  *
+ * @since 1.0.0
  */
 public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
     private final MantaSchemaTableName tableName;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param tableName table name definition object
+     */
     @JsonCreator
     public MantaTableLayoutHandle(
             @JsonProperty("tableName") final MantaSchemaTableName tableName) {

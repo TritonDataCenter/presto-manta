@@ -11,7 +11,9 @@ import org.apache.commons.lang3.exception.ExceptionContext;
 
 /**
  * Exception representing a problem with the format of a data file being read
- * as a table
+ * as a table.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoFileFormatException extends MantaPrestoRuntimeException {
     private static final long serialVersionUID = -7134125396742967590L;

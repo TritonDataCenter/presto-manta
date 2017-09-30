@@ -18,13 +18,25 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 /**
-
+ * {@link ConnectorSplitSource} implementation that takes a stream of Manta
+ * objects and turns them into asynchronous splittable units and returns them.
+ *
+ * @since 1.0.0
  */
 public class MantaStreamingSplitSource implements ConnectorSplitSource {
 
     private final Iterator<MantaSplit> iterator;
     private final Stream<MantaObject> backingStream;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param connectorId presto connection id object for debugging
+     * @param schemaName schema as defined in Presto catalog configuration
+     * @param tableName table as defined in table definition file
+     * @param dataFileType data type of all objects in table
+     * @param backingStream stream of objects that will be processed into splits
+     */
     public MantaStreamingSplitSource(final String connectorId,
                                      final String schemaName,
                                      final String tableName,

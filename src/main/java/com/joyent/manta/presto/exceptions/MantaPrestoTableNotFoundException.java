@@ -9,7 +9,7 @@ package com.joyent.manta.presto.exceptions;
 
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.TableNotFoundException;
-import com.joyent.manta.presto.MantaSchemaTableName;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.exception.DefaultExceptionContext;
 import org.apache.commons.lang3.exception.ExceptionContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -20,6 +20,8 @@ import java.util.Set;
 /**
  * Runtime exception indicating that a table couldn't be found at the specified
  * path.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoTableNotFoundException extends TableNotFoundException
         implements ExceptionContext {

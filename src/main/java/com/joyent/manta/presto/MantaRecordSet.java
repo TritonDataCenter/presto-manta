@@ -28,24 +28,37 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * {@link RecordSet} implementation that provides a {@link RecordCursor} to
+ * a single file object in Manta and chooses the correct cursor for the data
+ * type.
  *
+ * @since 1.0.0
  */
 public class MantaRecordSet implements RecordSet {
     private final List<MantaColumn> columns;
     private final List<Type> columnTypes;
     private final String objectPath;
     private final MantaClient mantaClient;
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper mapper;
     private final MantaDataFileType dataFileType;
 
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param split split instance that informs the record set of the object
+     *              path to use for the cursor creation
+     * @param columns list of columns to use in the record set
+     * @param mantaClient object that allows for direct operations on Manta
+     * @param mapper Jackson JSON serialization / deserialization object
+     */
     public MantaRecordSet(final MantaSplit split,
                           final List<MantaColumn> columns,
                           final MantaClient mantaClient,
-                          final ObjectMapper objectMapper) {
+                          final ObjectMapper mapper) {
         requireNonNull(split, "split is null");
         this.columns = requireNonNull(columns, "column handles is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
-        this.objectMapper = requireNonNull(objectMapper, "object mapper is null");
+        this.mapper = requireNonNull(mapper, "object mapper is null");
         this.dataFileType = requireNonNull(split.getDataFileType(), "data file type is null");
         this.objectPath = requireNonNull(split.getObjectPath(), "object path is null");
 
@@ -82,7 +95,7 @@ public class MantaRecordSet implements RecordSet {
         switch (dataFileType) {
             case NDJSON:
                 return new MantaJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin, objectMapper);
+                        totalBytes, cin, mapper);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);

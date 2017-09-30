@@ -5,11 +5,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-
 /**
- * Manta Presto Connector main package. All generalized classes are contained
- * within this package.
+ * All classes directly relating to column operations are within this package.
  *
  * @since 1.0.0
  */
-package com.joyent.manta.presto;
+package com.joyent.manta.presto.column;

@@ -23,20 +23,33 @@ import java.util.Scanner;
 /**
  * Helper class that reads the first non-blank line from a remote Manta file and
  * then aborts the connection on close().
+ *
+ * @since 1.0.0
  */
 public class FirstLinePeeker {
     private final MantaObjectInputStream mantaInputStream;
     private final InputStream inputStream;
     private final String charset;
 
-    public FirstLinePeeker(final MantaObjectInputStream inputStream) {
-        this.mantaInputStream = Objects.requireNonNull(inputStream,
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param in Manta input stream to read the first line from
+     */
+    public FirstLinePeeker(final MantaObjectInputStream in) {
+        this.mantaInputStream = Objects.requireNonNull(in,
                 "InputStream is null");
         this.charset = MantaPrestoUtils.parseCharset(
                 mantaInputStream.getContentType(), StandardCharsets.UTF_8).name();
-        this.inputStream = MantaCompressionType.wrapMantaStreamIfCompressed(inputStream);
+        this.inputStream = MantaCompressionType.wrapMantaStreamIfCompressed(in);
     }
 
+    /**
+     * Reads the first line from the input stream associated from the class.
+     *
+     * @return the first line from a new line delimited stream
+     * @throws MantaPrestoFileFormatException if no valid lines can be read
+     */
     public String readFirstLine() {
         String line;
         long count = 1;

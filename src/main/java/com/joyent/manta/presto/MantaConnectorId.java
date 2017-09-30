@@ -13,6 +13,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Class representing the id of a {@link MantaConnector}.
+ *
+ * @since 1.0.0
  */
 public class MantaConnectorId {
     /**

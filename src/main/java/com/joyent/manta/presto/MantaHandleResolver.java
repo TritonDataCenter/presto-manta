@@ -14,9 +14,13 @@ import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.tables.MantaSchemaTableName;
 
 /**
+ * {@link ConnectorHandleResolver} implementation that allows Presto to find
+ * the Manta specific implementations of operational classes.
  *
+ * @since 1.0.0
  */
 public class MantaHandleResolver implements ConnectorHandleResolver {
     @Override

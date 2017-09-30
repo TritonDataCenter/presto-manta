@@ -19,6 +19,8 @@ import java.util.Set;
 /**
  * Wraps an {@link java.io.IOException} with an unchecked exception and allows
  * for additional exception context.
+ *
+ * @since 1.0.0
  */
 public class MantaPrestoUncheckedIOException extends UncheckedIOException
         implements ExceptionContext {
