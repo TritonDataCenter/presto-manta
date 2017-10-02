@@ -22,8 +22,16 @@ public class MantaCompressionTypeTest {
         canDecompress(MantaCompressionType.BZIP2);
     }
 
+    public void canDecompressLz4() throws Exception {
+        canDecompress(MantaCompressionType.LZ4);
+    }
+
     public void canDecompressGzip() throws Exception {
         canDecompress(MantaCompressionType.GZIP);
+    }
+
+    public void canDecompressSnappy() throws Exception {
+        canDecompress(MantaCompressionType.SNAPPY);
     }
 
     public void canDecompressXz() throws Exception {

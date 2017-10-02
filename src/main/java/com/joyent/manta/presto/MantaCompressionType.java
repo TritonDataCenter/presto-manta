@@ -40,6 +40,15 @@ public enum MantaCompressionType {
     @JsonProperty("GZIP")
     GZIP("gz", CompressorStreamFactory.GZIP),
     /**
+     * LZ4 raw algorithm.
+     */
+    LZ4("lz4", CompressorStreamFactory.LZ4_BLOCK),
+    /**
+     * Snappy framed algorithm.
+     */
+    @JsonProperty("SNAPPY")
+    SNAPPY("sz", CompressorStreamFactory.SNAPPY_FRAMED),
+    /**
      * XZ algorithm.
      */
     @JsonProperty("XZ")

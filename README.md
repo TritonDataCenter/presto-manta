@@ -23,7 +23,9 @@ the [installation documentation](./INSTALL.md).
 ### Supported Compression Algorithms
  
  * [BZIP2 with the file extension `.bz2`](https://en.wikipedia.org/wiki/Bzip2)
+ * [LZ4 with the file extension `.lz4`](https://en.wikipedia.org/wiki/LZ4_(compression_algorithm))
  * [GZIP with the file extension `.gz`](https://en.wikipedia.org/wiki/Gzip)
+ * [SNAPPY with the file extension `.sz`](https://en.wikipedia.org/wiki/Snappy_(compression))
  * [XZ with the file extension `.xz`](https://en.wikipedia.org/wiki/Xz)   
 
 
