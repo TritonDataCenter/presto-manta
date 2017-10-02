@@ -12,6 +12,7 @@ import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -41,6 +42,20 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
+    /**
+     * Dedicated unconfigured JSON deserialization object because we don't want
+     * the saved mappings for the connector to slow down parsing of the incoming
+     * data.
+     */
+    private static final ObjectMapper CURSOR_MAPPER = new ObjectMapper();
+
+    /**
+     * Streaming JSON reader object that only needs to be instantiated a single
+     * time.
+     */
+    private static final ObjectReader STREAMING_READER =
+            CURSOR_MAPPER.readerFor(ObjectNode.class);
+
     private final List<MantaColumn> columns;
     private Long totalBytes = null;
     private long lines = 0L;
@@ -59,20 +74,18 @@ public class MantaJsonRecordCursor implements RecordCursor {
      * @param objectPath path to object in Manta
      * @param totalBytes total number of bytes in source object
      * @param countingStream input stream that counts the number of bytes processed
-     * @param mapper Jackson JSON serialization / deserialization object
      */
     public MantaJsonRecordCursor(final List<MantaColumn> columns,
                                  final String objectPath,
                                  final Long totalBytes,
-                                 final CountingInputStream countingStream,
-                                 final ObjectMapper mapper) {
+                                 final CountingInputStream countingStream) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.totalBytes = totalBytes;
         this.countingStream = countingStream;
 
         try {
-            this.lineItr = mapper.readerFor(ObjectNode.class).readValues(countingStream);
+            this.lineItr = STREAMING_READER.readValues(countingStream);
         } catch (IOException e) {
             String msg = "Unable to create a line iterator JSON parser";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);

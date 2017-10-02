@@ -10,7 +10,6 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.type.Type;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
@@ -21,6 +20,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -35,11 +35,12 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class MantaRecordSet implements RecordSet {
+    private static final int STREAM_BUFFER_SIZE = 65536;
+
     private final List<MantaColumn> columns;
     private final List<Type> columnTypes;
     private final String objectPath;
     private final MantaClient mantaClient;
-    private final ObjectMapper mapper;
     private final MantaDataFileType dataFileType;
 
     /**
@@ -49,16 +50,13 @@ public class MantaRecordSet implements RecordSet {
      *              path to use for the cursor creation
      * @param columns list of columns to use in the record set
      * @param mantaClient object that allows for direct operations on Manta
-     * @param mapper Jackson JSON serialization / deserialization object
      */
     public MantaRecordSet(final MantaSplit split,
                           final List<MantaColumn> columns,
-                          final MantaClient mantaClient,
-                          final ObjectMapper mapper) {
+                          final MantaClient mantaClient) {
         requireNonNull(split, "split is null");
         this.columns = requireNonNull(columns, "column handles is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
-        this.mapper = requireNonNull(mapper, "object mapper is null");
         this.dataFileType = requireNonNull(split.getDataFileType(), "data file type is null");
         this.objectPath = requireNonNull(split.getObjectPath(), "object path is null");
 
@@ -81,7 +79,8 @@ public class MantaRecordSet implements RecordSet {
 
         try {
             mantaInputStream = mantaClient.getAsInputStream(objectPath);
-            in = MantaCompressionType.wrapMantaStreamIfCompressed(mantaInputStream);
+            InputStream wrapped = MantaCompressionType.wrapMantaStreamIfCompressed(mantaInputStream);
+            in = new BufferedInputStream(wrapped, STREAM_BUFFER_SIZE);
         } catch (IOException e) {
             String msg = "There was a problem opening a connection to Manta";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
@@ -95,7 +94,7 @@ public class MantaRecordSet implements RecordSet {
         switch (dataFileType) {
             case NDJSON:
                 return new MantaJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin, mapper);
+                        totalBytes, cin);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);

@@ -8,15 +8,11 @@
 package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.type.Type;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
-import com.google.inject.Injector;
-import com.joyent.manta.presto.MantaPrestoTestUtils;
 import com.joyent.manta.presto.column.MantaColumn;
 import io.airlift.slice.Slice;
 import org.junit.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -35,16 +31,6 @@ public class MantaJsonRecordCursorTest {
     private static final String TEST_FILE = "test-data/sample-data.ndjson.gz";
     private static final boolean OUTPUT_ENABLED = false;
 
-    private Injector injector;
-    private ObjectMapper objectMapper;
-
-    @BeforeClass
-    public void before() {
-        injector = MantaPrestoTestUtils.createInjectorInstance(
-                MantaPrestoTestUtils.UNIT_TEST_CONFIG);
-        objectMapper = injector.getInstance(ObjectMapper.class);
-    }
-
     @SuppressWarnings("Duplicates")
     public void canParseJsonSampleRecordsWithoutAnError() throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
@@ -57,7 +43,7 @@ public class MantaJsonRecordCursorTest {
         CountingInputStream cin = new CountingInputStream(gzIn);
 
         try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(
-                columns, "/user/fake/object", totalBytes, cin, objectMapper)) {
+                columns, "/user/fake/object", totalBytes, cin)) {
 
             final int columnLen = columns.size();
             long line = 0L;

@@ -108,6 +108,11 @@ public class MantaMetadata implements ConnectorMetadata {
     }
 
     @Override
+    public boolean schemaExists(final ConnectorSession session, final String schemaName) {
+        return schemaMapping.containsKey(schemaName);
+    }
+
+    @Override
     public ConnectorTableHandle getTableHandle(final ConnectorSession session,
                                                final SchemaTableName tableName) {
         final MantaLogicalTable table = tableProvider

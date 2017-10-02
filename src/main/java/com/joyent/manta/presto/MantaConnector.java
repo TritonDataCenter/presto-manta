@@ -8,6 +8,7 @@
 package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.connector.Connector;
+import com.facebook.presto.spi.connector.ConnectorAccessControl;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
@@ -37,6 +38,7 @@ public class MantaConnector implements Connector {
     private final MantaMetadata metadata;
     private final MantaSplitManager splitManager;
     private final MantaRecordSetProvider recordSetProvider;
+    private final ConnectorAccessControl accessControl;
     private final MantaClient mantaClient;
 
     /**
@@ -46,6 +48,7 @@ public class MantaConnector implements Connector {
      * @param metadata object that provides metadata operations against schemas and tables
      * @param splitManager object that determines where to "split" data
      * @param recordSetProvider object that provides record sets based on table's columns
+     * @param accessControl access control object that specifies what operations are valid
      * @param mantaClient object that allows for direct operations on Manta
      */
     @Inject
@@ -53,12 +56,14 @@ public class MantaConnector implements Connector {
                           final MantaMetadata metadata,
                           final MantaSplitManager splitManager,
                           final MantaRecordSetProvider recordSetProvider,
+                          final ConnectorAccessControl accessControl,
                           final MantaClient mantaClient) {
         this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.splitManager = requireNonNull(splitManager, "splitManager is null");
         this.recordSetProvider = requireNonNull(recordSetProvider, "recordSetProvider is null");
-        this.mantaClient = mantaClient;
+        this.accessControl = requireNonNull(accessControl, "access control is null");
+        this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
     }
 
     @Override
@@ -72,7 +77,7 @@ public class MantaConnector implements Connector {
 
     @Override
     public ConnectorMetadata getMetadata(final ConnectorTransactionHandle transactionHandle) {
-        return this.metadata;
+        return metadata;
     }
 
     @Override
@@ -82,7 +87,12 @@ public class MantaConnector implements Connector {
 
     @Override
     public ConnectorRecordSetProvider getRecordSetProvider() {
-        return this.recordSetProvider;
+        return recordSetProvider;
+    }
+
+    @Override
+    public ConnectorAccessControl getAccessControl() {
+        return accessControl;
     }
 
     @Override

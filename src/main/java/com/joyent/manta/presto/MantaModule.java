@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto;
 
+import com.facebook.presto.spi.connector.ConnectorAccessControl;
 import com.facebook.presto.spi.type.TypeManager;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -166,11 +167,10 @@ public class MantaModule implements Module {
 
         binder.bind(ConfigContext.class).toInstance(this.config);
         binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).in(Scopes.SINGLETON);
+        binder.bind(ConnectorAccessControl.class).to(MantaReadOnlyAccessControl.class).in(Scopes.SINGLETON);
         binder.bind(MantaConnector.class).in(Scopes.SINGLETON);
         binder.bind(MantaConnectorId.class).toInstance(new MantaConnectorId(connectorId));
-
         binder.bind(MantaLogicalTableProvider.class).in(Scopes.SINGLETON);
-
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaJsonFileColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaMetadata.class).in(Scopes.SINGLETON);
