@@ -64,6 +64,9 @@ public class MantaConnector implements Connector {
     @Override
     public ConnectorTransactionHandle beginTransaction(final IsolationLevel isolationLevel,
                                                        final boolean readOnly) {
+        IsolationLevel.checkConnectorSupports(IsolationLevel.READ_COMMITTED,
+                isolationLevel);
+
         return MantaTransactionHandle.INSTANCE;
     }
 
