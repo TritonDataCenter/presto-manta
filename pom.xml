@@ -67,6 +67,7 @@
         <dependency.presto.version>0.184</dependency.presto.version>
         <dependency.commons-compress.version>1.14</dependency.commons-compress.version>
         <dependency.xz-version>1.6</dependency.xz-version>
+        <dependency.guava.version>23.0</dependency.guava.version>
         <dependency.slfj.version>1.7.21</dependency.slfj.version>
         <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
@@ -126,6 +127,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
             <version>${dependency.commons-compress.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${dependency.guava.version}</version>
         </dependency>
 
         <dependency>
