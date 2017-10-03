@@ -39,10 +39,10 @@ public class MantaMetadataIT {
     public void before() throws IOException {
         String randomDir = UUID.randomUUID().toString();
 
-        Map<String, String> emptyConfig = ImmutableMap.of(
+        Map<String, String> config = ImmutableMap.of(
                 "manta.schema.default", String.format(
                         "~~/stor/java-manta-integration-tests/%s", randomDir));
-        injector = MantaPrestoTestUtils.createInjectorInstance(emptyConfig);
+        injector = MantaPrestoTestUtils.createInjectorInstance(config);
 
         mantaClient = injector.getInstance(MantaClient.class);
         instance = injector.getInstance(MantaMetadata.class);

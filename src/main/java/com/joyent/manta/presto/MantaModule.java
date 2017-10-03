@@ -136,6 +136,8 @@ public class MantaModule implements Module {
                     new MapConfigContext(configParams),
                     new DefaultsConfigContext());
 
+            ConfigContext.validate(context);
+
             String homeDir = context.getMantaHomeDirectory();
             addToSchemaMapping(configParams, schemaMapping, homeDir);
         } else {
@@ -143,6 +145,8 @@ public class MantaModule implements Module {
                     new EnvVarConfigContext(),
                     new MapConfigContext(System.getProperties()),
                     new DefaultsConfigContext());
+
+            ConfigContext.validate(context);
 
             String homeDir = context.getMantaHomeDirectory();
             Map<String, String> defaultSchema = ImmutableMap.of(

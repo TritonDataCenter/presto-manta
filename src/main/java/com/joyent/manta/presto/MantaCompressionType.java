@@ -63,7 +63,7 @@ public enum MantaCompressionType {
      * Singleton static instance of compressor stream factory that can be
      * safely reused.
      */
-    static final CompressorStreamFactory COMPRESSOR_STREAM_FACTORY =
+    public static final CompressorStreamFactory COMPRESSOR_STREAM_FACTORY =
         new CompressorStreamFactory();
 
     static {

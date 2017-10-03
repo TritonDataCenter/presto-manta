@@ -197,6 +197,20 @@
             <version>${dependency.slfj.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-tests</artifactId>
+            <version>${dependency.presto.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-memory</artifactId>
+            <version>${dependency.presto.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

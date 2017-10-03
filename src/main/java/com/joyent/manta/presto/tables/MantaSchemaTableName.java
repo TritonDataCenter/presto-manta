@@ -15,6 +15,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * A Manta Presto specific implementation of {@link SchemaTableName} that
  * preserves the directory path structure with case sensitivity.
@@ -34,7 +36,8 @@ public class MantaSchemaTableName extends SchemaTableName
     @JsonCreator
     public MantaSchemaTableName(@JsonProperty("schemaName") final String schemaName,
                                 @JsonProperty("table") final MantaLogicalTable table) {
-        super(schemaName, table.getTableName());
+        super(requireNonNull(schemaName, "schema name is null"),
+              requireNonNull(table, "table is null").getTableName());
         this.table = table;
     }
 

@@ -11,7 +11,6 @@ import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.DoubleType;
-import com.facebook.presto.spi.type.IntegerType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.VarbinaryType;
 import com.facebook.presto.spi.type.VarcharType;
@@ -175,7 +174,7 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         } else if (val.isBigInteger()) {
             type = BigintType.BIGINT;
         } else if (val.isInt()) {
-            type = IntegerType.INTEGER;
+            type = BigintType.BIGINT;
         } else if (val.isFloat() || val.isDouble()) {
             type = DoubleType.DOUBLE;
         } else {

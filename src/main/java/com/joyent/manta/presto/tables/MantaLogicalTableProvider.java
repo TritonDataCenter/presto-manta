@@ -118,8 +118,7 @@ public class MantaLogicalTableProvider {
         MantaLogicalTable table = tablesForSchema(schemaName).get(tableName);
 
         if (table == null) {
-            MantaSchemaTableName mstn = new MantaSchemaTableName(
-                    schemaName, table);
+            SchemaTableName mstn = new SchemaTableName(schemaName, tableName);
             throw new MantaPrestoTableNotFoundException(mstn);
         }
 

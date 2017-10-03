@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
@@ -29,7 +30,7 @@ public enum MantaDataFileType {
      * New line delimited JSON.
      */
     @JsonProperty("NDJSON")
-    NDJSON(new String[] {"json", "ndjson", "ldjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
+    NDJSON(new String[] {"ndjson", "json", "ldjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
     /**
      * Comma separated value.
      */
@@ -83,6 +84,14 @@ public enum MantaDataFileType {
     MantaDataFileType(final String[] extensions, final String[] mediaTypes) {
         this.extensions = extensions;
         this.mediaTypes = mediaTypes;
+    }
+
+    /**
+     * @return the default file extension for the data file type
+     */
+    @JsonIgnore
+    public String getDefaultExtension() {
+        return extensions[0];
     }
 
     /**
