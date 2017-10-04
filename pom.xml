@@ -68,6 +68,7 @@
         <dependency.commons-compress.version>1.14</dependency.commons-compress.version>
         <dependency.xz-version>1.6</dependency.xz-version>
         <dependency.guava.version>23.0</dependency.guava.version>
+        <dependency.commons-lang>3.6</dependency.commons-lang>
         <dependency.slfj.version>1.7.21</dependency.slfj.version>
         <dependency.airlift.version>0.148</dependency.airlift.version>
         <dependency.testng.version>6.9.9</dependency.testng.version>
@@ -133,6 +134,12 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${dependency.guava.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${dependency.commons-lang}</version>
         </dependency>
 
         <dependency>

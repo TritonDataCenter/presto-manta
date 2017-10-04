@@ -28,6 +28,12 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class MantaConnectorFactory implements ConnectorFactory {
+    /**
+     * Creates a new instance.
+     */
+    public MantaConnectorFactory() {
+    }
+
     @Override
     public String getName() {
         return "manta";

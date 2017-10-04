@@ -36,7 +36,6 @@ import static org.testng.Assert.assertEquals;
 
 @Test
 public class MantaSmokeIT {
-    private String schemaPath;
     private String testPathPrefix;
     private MantaClient mantaClient;
     private DistributedQueryRunner queryRunner;
@@ -45,7 +44,8 @@ public class MantaSmokeIT {
     @BeforeClass
     public void before() throws IOException, CompressorException {
         String randomDir = UUID.randomUUID().toString();
-        schemaPath = String.format("~~/stor/java-manta-integration-tests/%s", randomDir);
+        String schemaPath = String.format("~~/stor/java-manta-integration-tests/%s",
+                randomDir);
         ConfigContext config = new ChainedConfigContext(
                 new EnvVarConfigContext(),
                 new MapConfigContext(System.getProperties()),
@@ -118,17 +118,24 @@ public class MantaSmokeIT {
         Assert.assertEqualsNoOrder(actual, expected);
     }
 
-    public void testSelect() throws SQLException {
-        queryRunner.execute(session, "CREATE TABLE memory.default.test_select AS SELECT * FROM nation");
+    public void canSelectAllFromSmallTable() throws SQLException {
+        try {
+            queryRunner.execute(session, "CREATE TABLE memory.default.test_select AS SELECT * FROM nation");
 
-        assertQuery("SELECT * FROM memory.default.test_select ORDER BY nationkey",
-                "SELECT * FROM tpch.tiny.nation ORDER BY nationkey");
+            assertQuery("SELECT * FROM memory.default.test_select ORDER BY nationkey",
+                    "SELECT * FROM tpch.tiny.nation ORDER BY nationkey");
+        } finally {
+            queryRunner.execute(session, "DROP TABLE memory.default.test_select");
+        }
+    }
 
-        assertQueryResult("INSERT INTO memory.default.test_select SELECT * FROM nation", 25L);
+    public void canJoinTwoTables() throws SQLException {
+        String sql = "SELECT n.name as nation_name, r.name as region_name "
+                + "FROM %s.nation AS n JOIN %s.region r ON r.regionkey = n.regionkey"
+                + " ORDER BY n.name";
 
-        assertQueryResult("INSERT INTO memory.default.test_select SELECT * FROM nation", 25L);
-
-        assertQueryResult("SELECT count(*) FROM memory.default.test_select", 75L);
+        assertQuery(String.format(sql, "manta.default", "manta.default"),
+                    String.format(sql, "tpch.tiny", "tpch.tiny"));
     }
 
     public void testSelectSingleRow() {
