@@ -8,6 +8,9 @@
 package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.type.Type;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
@@ -22,6 +25,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
 
+import static com.facebook.presto.spi.type.DateType.DATE;
 import static com.facebook.presto.spi.type.IntegerType.INTEGER;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static com.facebook.presto.type.JsonType.JSON;
@@ -41,9 +45,13 @@ public class MantaJsonRecordCursorTest {
         InputStream in = classLoader.getResourceAsStream(TEST_FILE);
         GZIPInputStream gzIn = new GZIPInputStream(in);
         CountingInputStream cin = new CountingInputStream(gzIn);
+        MantaJsonDataFileObjectMapperProvider mapperProvider = new MantaJsonDataFileObjectMapperProvider();
+        ObjectMapper mapper = mapperProvider.get();
+        ObjectReader streamingReader = mapper.readerFor(ObjectNode.class);
 
         try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(
-                columns, "/user/fake/object", totalBytes, cin)) {
+                columns, "/user/fake/object", totalBytes, cin,
+                streamingReader)) {
 
             final int columnLen = columns.size();
             long line = 0L;
@@ -121,6 +129,7 @@ public class MantaJsonRecordCursorTest {
         ImmutableList.Builder<MantaColumn> columns =
                 new ImmutableList.Builder<>();
 
+        columns.add(new MantaColumn("date", DATE, "date yyyy-MM-dd"));
         columns.add(new MantaColumn("name", VARCHAR, "string"));
         columns.add(new MantaColumn("article_id", VARCHAR, "string"));
         columns.add(new MantaColumn("publisher_id", VARCHAR, "string"));

@@ -30,7 +30,9 @@ public enum MantaDataFileType {
      * New line delimited JSON.
      */
     @JsonProperty("NDJSON")
-    NDJSON(new String[] {"ndjson", "json", "ldjson"}, new String[] {"application/x-ndjson", "x-json-stream", "application/json"}),
+    NDJSON(new String[] {"ndjson", "json", "ldjson"}, new String[] {
+            "application/x-ndjson", "application/x-json-stream", "application/json"
+    }),
     /**
      * Comma separated value.
      */
@@ -92,6 +94,14 @@ public enum MantaDataFileType {
     @JsonIgnore
     public String getDefaultExtension() {
         return extensions[0];
+    }
+
+    /**
+     * @return the default media type for the data file type
+     */
+    @JsonIgnore
+    public String getDefaultMediaType() {
+        return mediaTypes[0];
     }
 
     /**

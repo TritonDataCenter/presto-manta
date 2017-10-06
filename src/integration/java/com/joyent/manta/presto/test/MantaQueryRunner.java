@@ -31,6 +31,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -162,6 +166,7 @@ public class MantaQueryRunner {
                 }
             } finally {
                 out.close();
+
                 LOG.info("Wrote {} rows to table {} in file {}", rows, tableName,
                         dataFilePath);
             }
@@ -221,6 +226,15 @@ public class MantaQueryRunner {
             node.put(column, (BigDecimal)field);
         } else if (field.getClass().equals(String.class)) {
             node.put(column, (String)field);
+        } else if (field.getClass().equals(java.sql.Date.class)) {
+            final long epoch = ((java.sql.Date)field).getTime();
+            final Instant instant = Instant.ofEpochMilli(epoch);
+            final LocalDate date = LocalDateTime.ofInstant(
+                    instant, ZoneOffset.UTC).toLocalDate();
+
+            node.putPOJO(column,  date.toString());
+        } else {
+            node.putPOJO(column, field);
         }
     }
 }

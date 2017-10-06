@@ -9,10 +9,9 @@ package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.ConnectorSession;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.inject.Injector;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
+import com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -22,14 +21,11 @@ import org.unitils.reflectionassert.ReflectionAssert;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
-import static org.mockito.Mockito.mock;
+import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
 
 @Test
 public class MantaMetadataIT {
-    private Injector injector;
     private MantaClient mantaClient;
     private MantaMetadata instance;
     private String testPathPrefix;
@@ -37,20 +33,11 @@ public class MantaMetadataIT {
 
     @BeforeClass
     public void before() throws IOException {
-        String randomDir = UUID.randomUUID().toString();
-
-        Map<String, String> config = ImmutableMap.of(
-                "manta.schema.default", String.format(
-                        "~~/stor/java-manta-integration-tests/%s", randomDir));
-        injector = MantaPrestoTestUtils.createInjectorInstance(config);
-
-        mantaClient = injector.getInstance(MantaClient.class);
-        instance = injector.getInstance(MantaMetadata.class);
-        session = mock(ConnectorSession.class);
-
-        testPathPrefix = String.format("%s/stor/java-manta-integration-tests/%s/",
-                mantaClient.getContext().getMantaHomeDirectory(), randomDir);
-        mantaClient.putDirectory(testPathPrefix, true);
+        MantaPrestoIntegrationTestUtils.IntegrationSetup setup = setupConfiguration();
+        mantaClient = setup.mantaClient;
+        instance = setup.instance;
+        session = setup.session;
+        testPathPrefix = setup.testPathPrefix;
     }
 
     @AfterClass

@@ -9,6 +9,7 @@ package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
+import com.facebook.presto.spi.type.DateType;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.DoubleType;
 import com.facebook.presto.spi.type.Type;
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.MantaConnectorId;
@@ -28,6 +30,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -44,7 +47,25 @@ import java.util.Map;
  * @since 1.0.0
  */
 public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
-    private final ObjectMapper mapper;
+    private static final String[] DATE_KEYWORDS = new String[] {
+            "date", "timestamp"
+    };
+
+    /**
+     * List of parseable date formats.
+     */
+    public static final Map<String, String> DATE_FORMAT_REGEXPS =
+            new ImmutableMap.Builder<String, String>()
+                    .put("^\\d{8}$", "yyyyMMdd")
+                    .put("^\\d{1,2}-\\d{1,2}-\\d{4}$", "dd-MM-yyyy")
+                    .put("^\\d{4}-\\d{1,2}-\\d{1,2}$", "yyyy-MM-dd")
+                    .put("^\\d{1,2}/\\d{1,2}/\\d{4}$", "MM/dd/yyyy")
+                    .put("^\\d{4}/\\d{1,2}/\\d{1,2}$", "yyyy/MM/dd")
+                    .put("^\\d{1,2}\\s[a-z]{3}\\s\\d{4}$", "dd MMM yyyy")
+                    .put("^\\d{1,2}\\s[a-z]{4,}\\s\\d{4}$", "dd MMMM yyyy")
+                    .build();
+
+    private final ObjectMapper jsonDataFileMapper;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -54,15 +75,15 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
      * @param maxBytesPerLine number of bytes from the start of file to request
      *                        via a range request so we don't have to download
      *                        the entire file
-     * @param mapper Jackson JSON serialization / deserialization object
+     * @param jsonDataFileMapper Jackson JSON serialization / deserialization object
      */
     @Inject
     public MantaJsonFileColumnLister(final MantaConnectorId connectorId,
                                      final MantaClient mantaClient,
                                      @Named("MaxBytesPerLine") final Integer maxBytesPerLine,
-                                     final ObjectMapper mapper) {
+                                     @Named("JsonData") final ObjectMapper jsonDataFileMapper) {
         super(connectorId, mantaClient, maxBytesPerLine);
-        this.mapper = mapper;
+        this.jsonDataFileMapper = jsonDataFileMapper;
     }
 
     @Override
@@ -95,7 +116,7 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         final JsonNode node;
 
         try {
-            node = mapper.readValue(firstLine, JsonNode.class);
+            node = jsonDataFileMapper.readValue(firstLine, JsonNode.class);
         } catch (IOException e) {
             String msg = "Error parsing first line of new line NDJson file";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
@@ -156,8 +177,15 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 extraInfo = "pojo";
                 break;
             case STRING:
-                type = VarcharType.VARCHAR;
-                extraInfo = "string";
+                final String dateFormat = findDateFormat(key, val);
+                if (dateFormat != null) {
+                    type = DateType.DATE;
+                    extraInfo = "date " + dateFormat;
+                } else {
+                    type = VarcharType.VARCHAR;
+                    extraInfo = "string";
+                }
+
                 break;
             default:
                 return null;
@@ -166,14 +194,29 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         return new MantaColumn(key, type, extraInfo);
     }
 
+    private String findDateFormat(final String key, final JsonNode val) {
+        final String text = val.asText();
+        for (String keyword : DATE_KEYWORDS) {
+            if (StringUtils.containsIgnoreCase(key, keyword)) {
+                for (String regexp : DATE_FORMAT_REGEXPS.keySet()) {
+                    if (text.toLowerCase().matches(regexp)) {
+                        return DATE_FORMAT_REGEXPS.get(regexp);
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     private Type findNumericType(final JsonNode val) {
         final Type type;
 
-        if (val.isBigDecimal()) {
-            type = DecimalType.createDecimalType();
-        } else if (val.isBigInteger()) {
+        // We don't process BigDecimals because of: https://github.com/prestodb/presto/issues/9103
+
+        if (val.isBigInteger()) {
             type = BigintType.BIGINT;
-        } else if (val.isInt()) {
+        } else if (val.isInt() || val.isLong()) {
             type = BigintType.BIGINT;
         } else if (val.isFloat() || val.isDouble()) {
             type = DoubleType.DOUBLE;

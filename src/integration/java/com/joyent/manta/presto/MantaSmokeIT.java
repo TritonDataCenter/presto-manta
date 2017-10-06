@@ -8,6 +8,7 @@
 package com.joyent.manta.presto;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.testing.MaterializedResult;
 import com.facebook.presto.testing.MaterializedRow;
 import com.facebook.presto.tests.DistributedQueryRunner;
@@ -19,6 +20,7 @@ import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.presto.test.MantaQueryRunner;
 import org.apache.commons.compress.compressors.CompressorException;
+import org.h2.util.StringUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -28,6 +30,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -118,24 +121,72 @@ public class MantaSmokeIT {
         Assert.assertEqualsNoOrder(actual, expected);
     }
 
-    public void canSelectAllFromSmallTable() throws SQLException {
-        try {
-            queryRunner.execute(session, "CREATE TABLE memory.default.test_select AS SELECT * FROM nation");
+    public void canSelectAllFromNationTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.nation ORDER BY nationkey";
 
-            assertQuery("SELECT * FROM memory.default.test_select ORDER BY nationkey",
-                    "SELECT * FROM tpch.tiny.nation ORDER BY nationkey");
-        } finally {
-            queryRunner.execute(session, "DROP TABLE memory.default.test_select");
-        }
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromRegionTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.region ORDER BY regionkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromCustomerTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.customer ORDER BY custkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromLineitemTable() throws SQLException {
+        String sql = "SELECT * "
+                + "FROM ${schema}.lineitem "
+                + "ORDER BY orderkey, partkey, suppkey, linenumber, "
+                + "shipdate, commitdate, receiptdate";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromOrderTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.orders ORDER BY orderkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromPartTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.part ORDER BY partkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromPartsuppTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.partsupp ORDER BY partkey, suppkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
+    }
+
+    public void canSelectAllFromSupplierTable() throws SQLException {
+        String sql = "SELECT * FROM ${schema}.supplier ORDER BY suppkey";
+
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
     }
 
     public void canJoinTwoTables() throws SQLException {
         String sql = "SELECT n.name as nation_name, r.name as region_name "
-                + "FROM %s.nation AS n JOIN %s.region r ON r.regionkey = n.regionkey"
+                + "FROM ${schema}.nation AS n JOIN ${schema}.region r ON r.regionkey = n.regionkey"
                 + " ORDER BY n.name";
 
-        assertQuery(String.format(sql, "manta.default", "manta.default"),
-                    String.format(sql, "tpch.tiny", "tpch.tiny"));
+        assertQuery(interpolateSchemaInSql(sql, "manta.default"),
+                interpolateSchemaInSql(sql, "tpch.tiny"));
     }
 
     public void testSelectSingleRow() {
@@ -164,12 +215,86 @@ public class MantaSmokeIT {
         }
     }
 
-    private void assertQuery(String sql, String expected) {
-        MaterializedRow[] rows = queryRunner.execute(session, sql)
-                .getMaterializedRows().stream().toArray(MaterializedRow[]::new);
-        MaterializedRow[] expectedRows = queryRunner.execute(session, expected)
-                .getMaterializedRows().stream().toArray(MaterializedRow[]::new);
+    private void assertQuery(String sql, String expectedSql) {
+        MaterializedResult result = queryRunner.execute(session, sql);
+        List<MaterializedRow> materializedRows = result.getMaterializedRows();
+        List<Type> types = result.getTypes();
 
-        Assert.assertEqualsNoOrder(rows, expectedRows);
+        MaterializedResult expectedResult = queryRunner.execute(session, expectedSql);
+        List<MaterializedRow> materializedExpectedRows = expectedResult
+                .getMaterializedRows();
+        List<Type> expectedTypes = expectedResult.getTypes();
+
+        assertTypeListsAreEqual(types, expectedTypes);
+
+        Assert.assertEquals(result.getRowCount(), expectedResult.getRowCount(),
+                "Row counts aren't equal between results");
+
+        ListIterator<MaterializedRow> resultItr = materializedRows.listIterator();
+        ListIterator<MaterializedRow> expectedItr = materializedExpectedRows.listIterator();
+
+        int rowNo = 1;
+        while (resultItr.hasNext() && expectedItr.hasNext()) {
+            final MaterializedRow actual = resultItr.next();
+            final MaterializedRow expected = expectedItr.next();
+
+            String[] actualValues = new String[actual.getFields().size()];
+            for (int i = 0; i < actualValues.length; i++){
+                actualValues[i] = Objects.toString(actual.getField(i), null);
+            }
+
+            String[] expectedValues = new String[expected.getFields().size()];
+            for (int i = 0; i < expectedValues.length; i++){
+                expectedValues[i] = Objects.toString(expected.getField(i), null);
+            }
+
+            Assert.assertEquals(actualValues, expectedValues,
+                    String.format("Row number %d has different values.\n"
+                            + "Expected: %s\n"
+                            + "Actual:   %s", rowNo++, expected, actual));
+        }
+    }
+
+    private String interpolateSchemaInSql(final String sql, final String schemaName) {
+        return StringUtils.replaceAll(sql, "${schema}", schemaName);
+    }
+
+    private static void assertTypeListsAreEqual(final List<Type> actual,
+                                                final List<Type> expected) {
+        if (actual == null && expected == null) {
+            return;
+        }
+
+        Assert.assertNotNull(actual);
+        Assert.assertNotNull(expected);
+
+        Assert.assertEquals(actual.size(), expected.size(),
+                "Size of type collection differs");
+
+        ListIterator<Type> actualItr = actual.listIterator();
+        ListIterator<Type> expectedItr = expected.listIterator();
+
+        int colNo = 1;
+        while (actualItr.hasNext() && expectedItr.hasNext()) {
+            Type actualType = actualItr.next();
+            Type expectedType = expectedItr.next();
+
+            assertTypesAreEqual(actualType, expectedType,
+                    String.format("Types differ for column %d", colNo++));
+        }
+    }
+
+    private static void assertTypesAreEqual(final Type actual, final Type expected,
+                                            final String msg) {
+        if (expected.getTypeSignature().getBase().equals("date")
+                && actual.getTypeSignature().getBase().equals("varchar")) {
+            // We don't have a way to coerce dates, so they are processed as strings
+            return;
+        }
+
+        Class<?> actualJavaType = actual.getJavaType();
+        Class<?> expectedJavaType = expected.getJavaType();
+
+        Assert.assertEquals(actualJavaType, expectedJavaType, msg);
     }
 }

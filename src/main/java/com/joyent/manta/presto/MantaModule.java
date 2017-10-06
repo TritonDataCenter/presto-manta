@@ -9,6 +9,7 @@ package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.connector.ConnectorAccessControl;
 import com.facebook.presto.spi.type.TypeManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Binder;
@@ -23,6 +24,7 @@ import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
+import com.joyent.manta.presto.record.json.MantaJsonDataFileObjectMapperProvider;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableDeserializer;
@@ -168,6 +170,11 @@ public class MantaModule implements Module {
                 .toInstance(maxBytesPerLine);
 
         binder.bind(TypeManager.class).toInstance(typeManager);
+
+        binder.bind(ObjectMapper.class)
+                .annotatedWith(Names.named("JsonData"))
+                .toProvider(MantaJsonDataFileObjectMapperProvider.class)
+                .in(Scopes.SINGLETON);
 
         binder.bind(ConfigContext.class).toInstance(this.config);
         binder.bind(MantaClient.class).toProvider(MantaClientProvider.class).in(Scopes.SINGLETON);

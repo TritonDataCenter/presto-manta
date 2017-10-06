@@ -11,7 +11,6 @@ import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
@@ -19,15 +18,21 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.exceptions.MantaPrestoFileFormatException;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,20 +47,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
-    /**
-     * Dedicated unconfigured JSON deserialization object because we don't want
-     * the saved mappings for the connector to slow down parsing of the incoming
-     * data.
-     */
-    private static final ObjectMapper CURSOR_MAPPER = new ObjectMapper();
-
-    /**
-     * Streaming JSON reader object that only needs to be instantiated a single
-     * time.
-     */
-    private static final ObjectReader STREAMING_READER =
-            CURSOR_MAPPER.readerFor(ObjectNode.class);
-
     private final List<MantaColumn> columns;
     private Long totalBytes = null;
     private long lines = 0L;
@@ -64,6 +55,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final String objectPath;
     private final CountingInputStream countingStream;
     private final MappingIterator<ObjectNode> lineItr;
+    private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
 
     private Map<Integer, JsonNode> row;
 
@@ -74,18 +66,20 @@ public class MantaJsonRecordCursor implements RecordCursor {
      * @param objectPath path to object in Manta
      * @param totalBytes total number of bytes in source object
      * @param countingStream input stream that counts the number of bytes processed
+     * @param streamingReader streaming json deserialization reader
      */
     public MantaJsonRecordCursor(final List<MantaColumn> columns,
                                  final String objectPath,
                                  final Long totalBytes,
-                                 final CountingInputStream countingStream) {
+                                 final CountingInputStream countingStream,
+                                 final ObjectReader streamingReader) {
         this.columns = columns;
         this.objectPath = objectPath;
         this.totalBytes = totalBytes;
         this.countingStream = countingStream;
 
         try {
-            this.lineItr = STREAMING_READER.readValues(countingStream);
+            this.lineItr = streamingReader.readValues(countingStream);
         } catch (IOException e) {
             String msg = "Unable to create a line iterator JSON parser";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
@@ -159,7 +153,48 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public long getLong(final int field) {
-        return row.get(field).asLong();
+        final MantaColumn column = columns.get(field);
+        final JsonNode value = row.get(field);
+        final String type = column.getType().getTypeSignature().getBase();
+
+        switch (type) {
+            case "date":
+                return getDate(value, column);
+            default:
+                return value.asLong();
+        }
+    }
+
+    /**
+     * Presto attempts to read date types into long values.
+     *
+     * @param value parsed JSON node value
+     * @param column column associated with node
+     * @return date as represented in the number of milliseconds from
+     *         1970-01-01T00:00:00 in UTC but time must be midnight in the
+     *         local time zone
+     */
+    private long getDate(final JsonNode value, final MantaColumn column) {
+        final String pattern = StringUtils.substringAfter(
+                column.getExtraInfo(), "date ");
+
+        final DateTimeFormatter format = dateFormats.computeIfAbsent(
+                pattern, s -> DateTimeFormatter.ofPattern(pattern));
+
+        try {
+            final LocalDate date = LocalDate.parse(value.asText(), format);
+            return date.toEpochDay();
+        } catch (DateTimeParseException e) {
+            String msg = "There was a problem parsing a date value";
+            MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg);
+            me.setContextValue("column", column.getName());
+            me.setContextValue("columnExtraInfo", column.getExtraInfo());
+            me.setContextValue("input", value.toString());
+            me.setContextValue("datePattern", pattern);
+            me.setContextValue("line", lines);
+            me.setContextValue("objectPath", objectPath);
+            throw me;
+        }
     }
 
     @Override
@@ -186,6 +221,11 @@ public class MantaJsonRecordCursor implements RecordCursor {
             String msg = "Unsupported type passed as slice";
             MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
             me.setContextValue("objectPath", objectPath);
+
+            if (columns != null) {
+                me.setContextValue("column", columns.get(field));
+            }
+
             me.setContextValue("fieldNumber", field);
             me.setContextValue("fieldMappings", Joiner.on("->").join(row.entrySet()));
             me.setContextValue("node", node);

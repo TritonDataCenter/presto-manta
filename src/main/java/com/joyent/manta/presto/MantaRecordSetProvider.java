@@ -13,12 +13,16 @@ import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.presto.column.MantaColumn;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -32,18 +36,23 @@ import static java.util.Objects.requireNonNull;
 public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
     private final String connectorId;
     private final MantaClient mantaClient;
+    private final ObjectReader streamingReader;
 
     /**
      * Creates a new instance based on the specified parameters.
      *
      * @param connectorId presto connection id object for debugging
      * @param mantaClient object that allows for direct operations on Manta
+     * @param jsonDataFileMapper jackson object mapper instance used only for data files
      */
     @Inject
     public MantaRecordSetProvider(final MantaConnectorId connectorId,
-                                  final MantaClient mantaClient) {
+                                  final MantaClient mantaClient,
+                                  @Named("JsonData") final ObjectMapper jsonDataFileMapper) {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
+        requireNonNull(jsonDataFileMapper, "object mapper is null");
+        this.streamingReader = jsonDataFileMapper.readerFor(ObjectNode.class);
     }
 
     @Override
@@ -63,7 +72,8 @@ public class MantaRecordSetProvider implements ConnectorRecordSetProvider {
             handles.add((MantaColumn) column);
         }
 
-        return new MantaRecordSet(mantaSplit, handles.build(), mantaClient);
+        return new MantaRecordSet(mantaSplit, handles.build(), mantaClient,
+                streamingReader);
     }
 
     @Override

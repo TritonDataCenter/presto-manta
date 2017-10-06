@@ -66,6 +66,10 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
     @Override
     public String toString() {
         return new ToStringBuilder(this)
+                .append("name", super.getName())
+                .append("type", super.getType())
+                .append("comment", super.getComment())
+                .append("extraInfo", super.getExtraInfo())
                 .toString();
     }
 }

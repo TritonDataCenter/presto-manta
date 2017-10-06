@@ -10,6 +10,7 @@ package com.joyent.manta.presto;
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.type.Type;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
@@ -42,6 +43,7 @@ public class MantaRecordSet implements RecordSet {
     private final String objectPath;
     private final MantaClient mantaClient;
     private final MantaDataFileType dataFileType;
+    private final ObjectReader streamingReader;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -50,15 +52,18 @@ public class MantaRecordSet implements RecordSet {
      *              path to use for the cursor creation
      * @param columns list of columns to use in the record set
      * @param mantaClient object that allows for direct operations on Manta
+     * @param streamingReader streaming json deserialization reader
      */
     public MantaRecordSet(final MantaSplit split,
                           final List<MantaColumn> columns,
-                          final MantaClient mantaClient) {
+                          final MantaClient mantaClient,
+                          final ObjectReader streamingReader) {
         requireNonNull(split, "split is null");
         this.columns = requireNonNull(columns, "column handles is null");
         this.mantaClient = requireNonNull(mantaClient, "Manta client is null");
         this.dataFileType = requireNonNull(split.getDataFileType(), "data file type is null");
         this.objectPath = requireNonNull(split.getObjectPath(), "object path is null");
+        this.streamingReader = requireNonNull(streamingReader, "object streaming reader is null");
 
         ImmutableList.Builder<Type> types = ImmutableList.builder();
         for (MantaColumn column : columns) {
@@ -94,7 +99,7 @@ public class MantaRecordSet implements RecordSet {
         switch (dataFileType) {
             case NDJSON:
                 return new MantaJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin);
+                        totalBytes, cin, streamingReader);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
