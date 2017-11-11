@@ -9,6 +9,8 @@ package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.Type;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -80,10 +82,27 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
         try {
             this.lineItr = streamingReader.readValues(countingStream);
+        } catch (JsonParseException e) {
+            String msg = "Can't parse input data as valid JSON";
+            MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
+            me.setContextValue("objectPath", objectPath);
+            me.setContextValue("jsonPayload", e.getRequestPayloadAsString());
+            me.setContextValue("bytePosition", countingStream.getCount());
+
+            if (e.getProcessor() != null) {
+                final JsonParser parser = e.getProcessor();
+                me.setContextValue("parser", parser.getClass());
+                if (parser.getInputSource() != null) {
+                    me.setContextValue("inputSource", parser.getInputSource().getClass());
+                }
+            }
+
+            throw me;
         } catch (IOException e) {
             String msg = "Unable to create a line iterator JSON parser";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
             me.setContextValue("objectPath", objectPath);
+            me.setContextValue("bytePosition", countingStream.getCount());
             throw me;
         }
     }

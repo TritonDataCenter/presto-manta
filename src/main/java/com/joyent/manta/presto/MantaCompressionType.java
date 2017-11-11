@@ -44,10 +44,10 @@ public enum MantaCompressionType {
      */
     LZ4("lz4", CompressorStreamFactory.LZ4_BLOCK),
     /**
-     * Snappy framed algorithm.
+     * Snappy raw algorithm.
      */
     @JsonProperty("SNAPPY")
-    SNAPPY("sz", CompressorStreamFactory.SNAPPY_FRAMED),
+    SNAPPY("snappy", CompressorStreamFactory.SNAPPY_RAW),
     /**
      * XZ algorithm.
      */

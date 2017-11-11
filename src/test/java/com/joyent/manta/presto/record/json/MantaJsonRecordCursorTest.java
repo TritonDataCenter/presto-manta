@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
+import com.google.common.io.Files;
+import com.joyent.manta.presto.MantaCompressionType;
 import com.joyent.manta.presto.column.MantaColumn;
 import io.airlift.slice.Slice;
 import org.junit.Assert;
@@ -23,7 +25,6 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
 
 import static com.facebook.presto.spi.type.DateType.DATE;
 import static com.facebook.presto.spi.type.IntegerType.INTEGER;
@@ -32,19 +33,43 @@ import static com.facebook.presto.type.JsonType.JSON;
 
 @Test
 public class MantaJsonRecordCursorTest {
-    private static final String TEST_FILE = "test-data/sample-data.ndjson.gz";
     private static final boolean OUTPUT_ENABLED = false;
 
+    public void canParseJsonGZSampleRecordsWithoutAnError() throws IOException {
+        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.gz");
+    }
+
+    public void canParseJsonHadoopSnappySampleRecordsWithoutAnError() throws IOException {
+        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.snappy");
+    }
+
+    public void canParseJsonXZSampleRecordsWithoutAnError() throws IOException {
+        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.xz");
+    }
+
+    public void canParseJsonBzip2SampleRecordsWithoutAnError() throws IOException {
+        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.bz2");
+    }
+
     @SuppressWarnings("Duplicates")
-    public void canParseJsonSampleRecordsWithoutAnError() throws IOException {
+    private void canParseJsonSampleRecordsWithoutAnError(final String testFile) throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         List<MantaColumn> columns = buildColumnList();
 
         final long totalBytes = 37782293;
 
-        InputStream in = classLoader.getResourceAsStream(TEST_FILE);
-        GZIPInputStream gzIn = new GZIPInputStream(in);
-        CountingInputStream cin = new CountingInputStream(gzIn);
+        InputStream in = classLoader.getResourceAsStream(testFile);
+        String extension = Files.getFileExtension(testFile);
+        InputStream compressedIn;
+
+        if (MantaCompressionType.isExtensionSupported(extension)) {
+            MantaCompressionType compression = MantaCompressionType.valueOfExtension(extension);
+            compressedIn = compression.createStream(in);
+        } else {
+            compressedIn = in;
+        }
+
+        CountingInputStream cin = new CountingInputStream(compressedIn);
         MantaJsonDataFileObjectMapperProvider mapperProvider = new MantaJsonDataFileObjectMapperProvider();
         ObjectMapper mapper = mapperProvider.get();
         ObjectReader streamingReader = mapper.readerFor(ObjectNode.class);
@@ -103,7 +128,7 @@ public class MantaJsonRecordCursorTest {
             }
 
             Duration readTime = Duration.of(cursor.getReadTimeNanos(), ChronoUnit.NANOS);
-            System.err.printf("Read file in %d ms\n", readTime.toMillis());
+            System.err.printf("Read file [%s] in %d ms\n", testFile, readTime.toMillis());
         }
     }
 
