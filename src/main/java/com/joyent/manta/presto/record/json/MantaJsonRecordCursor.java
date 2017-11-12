@@ -49,7 +49,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
-    private final List<MantaColumn> columns;
+    protected final List<MantaColumn> columns;
     private Long totalBytes = null;
     private long lines = 0L;
     private Long readTimeStartNanos = null;
@@ -59,7 +59,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final MappingIterator<ObjectNode> lineItr;
     private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
 
-    private Map<Integer, JsonNode> row;
+    protected Map<Integer, JsonNode> row;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -256,6 +256,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public Object getObject(final int field) {
+        // TODO: Add Map support
         return row.get(field);
     }
 
