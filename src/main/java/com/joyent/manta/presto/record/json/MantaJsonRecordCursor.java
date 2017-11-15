@@ -8,6 +8,12 @@
 package com.joyent.manta.presto.record.json;
 
 import com.facebook.presto.spi.RecordCursor;
+import com.facebook.presto.spi.block.Block;
+import com.facebook.presto.spi.block.BlockBuilder;
+import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.MapBlock;
+import com.facebook.presto.spi.block.SingleMapBlock;
+import com.facebook.presto.spi.type.MapType;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -24,6 +30,7 @@ import com.joyent.manta.presto.exceptions.MantaPrestoFileFormatException;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
+import com.joyent.manta.presto.types.MapStringType;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import org.apache.commons.lang3.StringUtils;
@@ -31,13 +38,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+
+import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
+import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
 /**
  * {@link RecordCursor} implementation that reads each new line of JSON into
@@ -47,6 +60,12 @@ import java.util.Objects;
  */
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
+
+    private static final Function<Map.Entry<String, JsonNode>, String> JSON_STRING_VALUE_EXTRACT_FUNCTION =
+            entry -> entry.getValue().asText();
+
+    private static final Function<Map.Entry<String, JsonNode>, Double> JSON_DOUBLE_VALUE_EXTRACT_FUNCTION =
+            entry -> entry.getValue().doubleValue();
 
     private final List<MantaColumn> columns;
     private Long totalBytes = null;
@@ -269,9 +288,22 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public Object getObject(final int field) {
-        String type = getType(field).getDisplayName();
+        Type type = getType(field);
+
+        if (type instanceof MapType) {
+            @SuppressWarnings("unchecked")
+            final ObjectNode keyVals = (ObjectNode) getRow().get(field);
+            final MapType mapType = (MapType) getType(field);
+
+            if (type.equals(MapStringType.MAP_STRING_STRING)) {
+                return createSimpleMapBlockWithStringValues(mapType, keyVals);
+            } else if (type.equals(MapStringType.MAP_STRING_DOUBLE)) {
+                return createSimpleMapBlockWithDoubleValues(mapType, keyVals);
+            }
+        }
+
         String column = getColumn(field).getName();
-        String template = "getObject not supported [column=%s,field=%d,type=%s]";
+        String template = "getObject not supported for type [column=%s,field=%d,type=%s]";
         String msg = String.format(template, column, field, type);
         throw new UnsupportedOperationException(msg);
     }
@@ -345,5 +377,111 @@ public class MantaJsonRecordCursor implements RecordCursor {
             String msg = String.format("No column maps to field [field=%d]", field);
             throw new IllegalArgumentException(msg, e);
         }
+    }
+
+    /**
+     * Creates an instance of {@link SingleMapBlock} so that a Map type can
+     * be returned to Presto as the value of a column within a row. This
+     * method creates maps with String keys and String values.
+     *
+     * @param mapType presto map type with key and value types defined
+     * @param objectNode JSON object node to parse into Presto Map type
+     * @return a block instance populated with the key/values of the JSON object
+     */
+    protected static SingleMapBlock createSimpleMapBlockWithStringValues(final MapType mapType,
+                                                                         final ObjectNode objectNode) {
+        return createSimpleMapBlock(mapType, objectNode, String.class, JSON_STRING_VALUE_EXTRACT_FUNCTION,
+                MantaJsonRecordCursor::createStringsBlock);
+    }
+
+    /**
+     * Creates an instance of {@link SingleMapBlock} so that a Map type can
+     * be returned to Presto as the value of a column within a row. This
+     * method creates maps with String keys and Double values.
+     *
+     * @param mapType presto map type with key and value types defined
+     * @param objectNode JSON object node to parse into Presto Map type
+     * @return a block instance populated with the key/values of the JSON object
+     */
+    protected static SingleMapBlock createSimpleMapBlockWithDoubleValues(final MapType mapType,
+                                                                         final ObjectNode objectNode) {
+        return createSimpleMapBlock(mapType, objectNode, Double.class, JSON_DOUBLE_VALUE_EXTRACT_FUNCTION,
+                MantaJsonRecordCursor::createDoublesBlock);
+    }
+
+    /**
+     * Creates an instance of {@link SingleMapBlock} so that a Map type can
+     * be returned to Presto as the value of a column within a row.
+     *
+     * @param mapType presto map type with key and value types defined
+     * @param objectNode JSON object node to parse into Presto Map type
+     * @param valueClass class of the value returned by the map being created
+     * @param extractFunction function used to extract a single value from the passed JSON object
+     * @param valueBlockCreateFunction function used to create the block for the map values returned to Presto
+     * @param <VALUE> type of value returned by the Presto map
+     * @return a block instance populated with the key/values of the JSON object
+     */
+    @SuppressWarnings("unchecked")
+    protected static <VALUE> SingleMapBlock createSimpleMapBlock(final MapType mapType,
+                                                                 final ObjectNode objectNode,
+                                                                 final Class<VALUE> valueClass,
+                                                                 final Function<Map.Entry<String, JsonNode>, VALUE> extractFunction,
+                                                                 final Function<VALUE[], Block> valueBlockCreateFunction) {
+        final int length = objectNode.size();
+        final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+        final int[] offsets = new int[] {0, length};
+        final boolean[] mapIsNeverNull = new boolean[] {true};
+
+        final String[] keys = new String[length];
+        final VALUE[] vals = (VALUE[])Array.newInstance(valueClass, length);
+
+        for (int i = 0; itr.hasNext(); i++) {
+            final Map.Entry<String, JsonNode> entry = itr.next();
+            keys[i] = entry.getKey();
+            vals[i] = extractFunction.apply(entry);
+        }
+
+        final MapBlock mapBlock = mapType.createBlockFromKeyValue(mapIsNeverNull, offsets,
+                createStringsBlock(keys), valueBlockCreateFunction.apply(vals));
+        @SuppressWarnings("unchecked")
+        final SingleMapBlock singleMapBlock = (SingleMapBlock)mapBlock.getObject(0, Block.class);
+
+        return singleMapBlock;
+    }
+
+    /**
+     * Creates a {@link Block} containing multiple String values.
+     * @param values Strings to add to block
+     * @return Block populated with Strings
+     */
+    protected static Block createStringsBlock(final String[] values) {
+        final int expectedEntries = values.length;
+        BlockBuilder builder = VARCHAR.createBlockBuilder(new BlockBuilderStatus(), expectedEntries);
+
+        for (String value : values) {
+            if (value == null) {
+                builder.appendNull();
+            } else {
+                VARCHAR.writeString(builder, value);
+            }
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Creates a {@link Block} containing multiple Double values.
+     * @param values Strings to add to block
+     * @return Block populated with Doubles
+     */
+    protected static Block createDoublesBlock(final Double[] values) {
+        final int expectedEntries = values.length;
+        BlockBuilder builder = DOUBLE.createBlockBuilder(new BlockBuilderStatus(), expectedEntries);
+
+        for (double value : values) {
+            DOUBLE.writeDouble(builder, value);
+        }
+
+        return builder.build();
     }
 }

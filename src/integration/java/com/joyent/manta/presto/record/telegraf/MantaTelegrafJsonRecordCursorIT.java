@@ -50,8 +50,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister.STRING_MAP;
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
+import static com.joyent.manta.presto.types.MapStringType.MAP_STRING_DOUBLE;
+import static com.joyent.manta.presto.types.MapStringType.MAP_STRING_STRING;
 
 @Test
 public class MantaTelegrafJsonRecordCursorIT {
@@ -87,15 +88,17 @@ public class MantaTelegrafJsonRecordCursorIT {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public void canParseMapValues() throws IOException {
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
-        node.put("timestamp", 1496275200);
+        final long timestampSeconds = 1496275200;
+        node.put("timestamp", timestampSeconds);
 
         {
             final ObjectNode tags = new ObjectNode(JsonNodeFactory.instance);
             tags.put("arch", "x64");
             tags.put("datacenter", "ap-southeast-1b");
-            node.put("tags", tags);
+            node.set("tags", tags);
         }
 
         node.put("name", "cpu");
@@ -104,14 +107,25 @@ public class MantaTelegrafJsonRecordCursorIT {
             final ObjectNode fields = new ObjectNode(JsonNodeFactory.instance);
             fields.put("usage_guest", 94.59371357640609);
             fields.put("usage_guest_nice", 58.79378775101397);
-            node.put("fields", fields);
+            node.set("fields", fields);
         }
 
         final Function<Block[], Void> assertion = blocks -> {
-            Object timestamp = TimestampType.TIMESTAMP.getObjectValue(session, blocks[0], 0);
-            Object tags = STRING_MAP.getObjectValue(session, blocks[1], 0);
+            SqlTimestamp timestamp = (SqlTimestamp)TimestampType.TIMESTAMP.getObjectValue(session, blocks[0], 0);
+            Assert.assertEquals(timestamp.getMillisUtc(), timestampSeconds * 1_000L,
+                    "Epoch seconds was not converted to epoch milliseconds");
+
+            Map<String, String> tags = (Map<String, String>)MAP_STRING_STRING.getObjectValue(session, blocks[1], 0);
+            Assert.assertEquals(tags.size(), 2, "Map value was unexpected length");
+            Assert.assertEquals(tags.get("arch"), "x64");
+            Assert.assertEquals(tags.get("datacenter"), "ap-southeast-1b");
+
             String name = VarcharType.VARCHAR.getSlice(blocks[2], 0).toStringUtf8();
-            Object fields = STRING_MAP.getObjectValue(session, blocks[3], 0);
+
+            Map<String, Double> fields = (Map<String, Double>)MAP_STRING_DOUBLE.getObjectValue(session, blocks[3], 0);
+            Assert.assertEquals(fields.size(), 2, "Map value was unexpected length");
+            Assert.assertEquals(fields.get("usage_guest"), 94.59371357640609d);
+            Assert.assertEquals(fields.get("usage_guest_nice"), 58.79378775101397d);
 
             return null;
         };

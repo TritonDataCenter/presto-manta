@@ -62,7 +62,6 @@ public class RedirectingColumnLister implements ColumnLister {
             case TELEGRAF_NDJSON:
                 lister = this.telegrafLister;
                 break;
-            case CSV:
             default:
                 String msg = "Unknown file type enum resolved";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
