@@ -16,10 +16,7 @@ import com.facebook.presto.spi.RecordPageSource;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import com.facebook.presto.spi.type.BigintType;
-import com.facebook.presto.spi.type.DateType;
-import com.facebook.presto.spi.type.DoubleType;
-import com.facebook.presto.spi.type.VarcharType;
+import com.facebook.presto.spi.type.*;
 import com.facebook.presto.testing.TestingTransactionHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -40,6 +37,7 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -52,9 +50,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister.STRING_MAP;
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
 
-//@Test
+@Test
 public class MantaTelegrafJsonRecordCursorIT {
     private Injector injector;
     private MantaClient mantaClient;
@@ -88,82 +87,31 @@ public class MantaTelegrafJsonRecordCursorIT {
         }
     }
 
-    public void canParseDateValues() throws IOException {
+    public void canParseMapValues() throws IOException {
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
-        node.put("date-field0", "07-01-2014");
-        node.put("date-field1", "1980-08-10");
-        node.put("date-field2", "09/09/2047");
-        node.put("date-field3", "1977/11/22");
-        node.put("date-field4", "02 Oct 1944");
-        node.put("date-field5", "13 December 1124");
+        node.put("timestamp", 1496275200);
+
+        {
+            final ObjectNode tags = new ObjectNode(JsonNodeFactory.instance);
+            tags.put("arch", "x64");
+            tags.put("datacenter", "ap-southeast-1b");
+            node.put("tags", tags);
+        }
+
+        node.put("name", "cpu");
+
+        {
+            final ObjectNode fields = new ObjectNode(JsonNodeFactory.instance);
+            fields.put("usage_guest", 94.59371357640609);
+            fields.put("usage_guest_nice", 58.79378775101397);
+            node.put("fields", fields);
+        }
 
         final Function<Block[], Void> assertion = blocks -> {
-            String field0 = DateType.DATE.getObjectValue(session, blocks[0], 0).toString();
-            Assert.assertEquals(field0, LocalDate.of(2014, 1, 7).toString());
-
-            String field1 = DateType.DATE.getObjectValue(session, blocks[1], 0).toString();
-            Assert.assertEquals(field1, LocalDate.of(1980, 8, 10).toString());
-
-            String field2 = DateType.DATE.getObjectValue(session, blocks[2], 0).toString();
-            Assert.assertEquals(field2, LocalDate.of(2047, 9, 9).toString());
-
-            String field3 = DateType.DATE.getObjectValue(session, blocks[3], 0).toString();
-            Assert.assertEquals(field3, LocalDate.of(1977, 11, 22).toString());
-            String field4 = DateType.DATE.getObjectValue(session, blocks[4], 0).toString();
-            Assert.assertEquals(field4, LocalDate.of(1944, 10, 2).toString());
-
-            String field5 = DateType.DATE.getObjectValue(session, blocks[5], 0).toString();
-            Assert.assertEquals(field5, LocalDate.of(1124, 12, 13).toString());
-
-            return null;
-        };
-
-        validateSingleRow(node, assertion);
-    }
-
-    public void canParseStringValues() throws IOException {
-        final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
-        node.put("field0", "This is a string"); // String
-        node.put("field1", "これもストリング"); // Unicode String
-
-        final Function<Block[], Void> assertion = blocks -> {
-            String field0 = VarcharType.VARCHAR.getSlice(blocks[0], 0).toStringUtf8();
-            Assert.assertEquals(field0, node.get("field0").asText());
-
-            String field1 = VarcharType.VARCHAR.getSlice(blocks[1], 0).toStringUtf8();
-            Assert.assertEquals(field1, node.get("field1").asText());
-
-            return null;
-        };
-
-        validateSingleRow(node, assertion);
-    }
-
-    public void canParseNumericValues() throws IOException {
-        final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
-        node.put("field0", 1); // Integer
-        node.put("field1", Long.MIN_VALUE); // Long
-        BigDecimal bigValue = BigDecimal.valueOf(Long.MAX_VALUE, 10).pow(2);
-        node.put("field2", bigValue); // Bigdecimal
-        node.put("field3",  3.14159); // Float
-        node.put("field4", 2.718281828459D); // Double
-
-        final Function<Block[], Void> assertion = blocks -> {
-            // All ints are cast to long within Presto
-            long field0 = BigintType.BIGINT.getLong(blocks[0], 0);
-            Assert.assertEquals(field0, node.get("field0").asLong());
-
-            long field1 = BigintType.BIGINT.getLong(blocks[1], 0);
-            Assert.assertEquals(field1, node.get("field1").asLong());
-
-            double field2 = DoubleType.DOUBLE.getDouble(blocks[2],0);
-            Assert.assertEquals(field2, node.get("field2").asDouble());
-
-            double field3 = DoubleType.DOUBLE.getDouble(blocks[3], 0);
-            Assert.assertEquals(field3, node.get("field3").asDouble());
-
-            double field4 = DoubleType.DOUBLE.getDouble(blocks[4], 0);
-            Assert.assertEquals(field4, node.get("field4").asDouble());
+            Object timestamp = TimestampType.TIMESTAMP.getObjectValue(session, blocks[0], 0);
+            Object tags = STRING_MAP.getObjectValue(session, blocks[1], 0);
+            String name = VarcharType.VARCHAR.getSlice(blocks[2], 0).toStringUtf8();
+            Object fields = STRING_MAP.getObjectValue(session, blocks[3], 0);
 
             return null;
         };

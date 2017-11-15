@@ -37,8 +37,7 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkArgument;
+import java.util.Objects;
 
 /**
  * {@link RecordCursor} implementation that reads each new line of JSON into
@@ -49,7 +48,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MantaJsonRecordCursor implements RecordCursor {
     private static final Logger LOG = LoggerFactory.getLogger(MantaJsonRecordCursor.class);
 
-    protected final List<MantaColumn> columns;
+    private final List<MantaColumn> columns;
     private Long totalBytes = null;
     private long lines = 0L;
     private Long readTimeStartNanos = null;
@@ -59,7 +58,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final MappingIterator<ObjectNode> lineItr;
     private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
 
-    protected Map<Integer, JsonNode> row;
+    private Map<Integer, JsonNode> row;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -132,8 +131,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public Type getType(final int field) {
-        checkArgument(field < columns.size(), "Invalid field index");
-        return columns.get(field).getType();
+        return getColumn(field).getType();
     }
 
     @Override
@@ -172,16 +170,31 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public long getLong(final int field) {
-        final MantaColumn column = columns.get(field);
+        final MantaColumn column = getColumn(field);
         final JsonNode value = row.get(field);
         final String type = column.getType().getTypeSignature().getBase();
 
         switch (type) {
+            case "timestamp":
+                return getTimestampFromLong(value);
             case "date":
                 return getDate(value, column);
             default:
                 return value.asLong();
         }
+    }
+
+    /**
+     * Reads the long value from a json numeric property as a
+     * long representing a timestamp. By default we read as
+     * epoch milliseconds. Extenders of this class may choose
+     * to convert from epoch seconds.
+     *
+     * @param value json node to read long value from
+     * @return long representing epoch milliseconds
+     */
+    protected long getTimestampFromLong(final JsonNode value) {
+        return value.longValue();
     }
 
     /**
@@ -193,7 +206,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
      *         1970-01-01T00:00:00 in UTC but time must be midnight in the
      *         local time zone
      */
-    private long getDate(final JsonNode value, final MantaColumn column) {
+    protected long getDate(final JsonNode value, final MantaColumn column) {
         final String pattern = StringUtils.substringAfter(
                 column.getExtraInfo(), "date ");
 
@@ -242,7 +255,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
             me.setContextValue("objectPath", objectPath);
 
             if (columns != null) {
-                me.setContextValue("column", columns.get(field));
+                me.setContextValue("column", getColumn(field));
             }
 
             me.setContextValue("fieldNumber", field);
@@ -256,8 +269,11 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public Object getObject(final int field) {
-        // TODO: Add Map support
-        return row.get(field);
+        String type = getType(field).getDisplayName();
+        String column = getColumn(field).getName();
+        String template = "getObject not supported [column=%s,field=%d,type=%s]";
+        String msg = String.format(template, column, field, type);
+        throw new UnsupportedOperationException(msg);
     }
 
     @Override
@@ -292,9 +308,42 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
         int count = 0;
         for (MantaColumn column : columns) {
-            map.put(count++, object.get(column.getName()));
+            final String columnName = Objects.requireNonNull(column.getName(),
+                    "Column name is null");
+            final JsonNode node = object.get(columnName);
+
+            if (node == null) {
+                String msg = "No column found with the specified name";
+                MantaPrestoIllegalArgumentException e = new MantaPrestoIllegalArgumentException(msg);
+                e.setContextValue("columnName", columnName);
+                String fields = Joiner.on(',').join(object.fieldNames());
+                e.setContextValue("fields", fields);
+
+                throw e;
+            }
+
+            map.put(count++, node);
         }
 
         return map.build();
+    }
+
+    protected Map<Integer, JsonNode> getRow() {
+        return row;
+    }
+
+    /**
+     * Gets the column corresponding to specified field number.
+     *
+     * @param field field to query for column information
+     * @return column corresponding to field
+     */
+    protected MantaColumn getColumn(final int field) {
+        try {
+            return columns.get(field);
+        } catch (IndexOutOfBoundsException e) {
+            String msg = String.format("No column maps to field [field=%d]", field);
+            throw new IllegalArgumentException(msg, e);
+        }
     }
 }

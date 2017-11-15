@@ -19,9 +19,9 @@ import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.reflect.MethodUtils;
 
-import javax.inject.Singleton;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +32,6 @@ import java.util.Objects;
  *
  * @since 1.0.0
  */
-@Singleton
 public class MantaTelegrafColumnLister implements ColumnLister {
     /**
      * Presto map type defined for string keys and values.
@@ -53,6 +52,8 @@ public class MantaTelegrafColumnLister implements ColumnLister {
         Objects.requireNonNull(keyNativeHashCodeMethod,
                 "Couldn't use reflection to get hash method");
 
+        final MethodType keyBlockHashCodeMt = MethodType.methodType(long.class, Block.class, int.class);
+
         final Method keyBlockHashCodeMethod = MethodUtils.getMatchingMethod(
                 clazz, "hash", Block.class, int.class);
         Objects.requireNonNull(keyBlockHashCodeMethod,
@@ -65,9 +66,13 @@ public class MantaTelegrafColumnLister implements ColumnLister {
         try {
             keyBlockNativeEqualsMh = lookup.unreflect(keyBlockNativeEqualsMethod);
             keyNativeHashCodeMh = lookup.unreflect(keyNativeHashCodeMethod);
-            keyBlockHashCodeMh = lookup.unreflect(keyBlockHashCodeMethod);
+            keyBlockHashCodeMh = lookup.findStatic(MantaTelegrafColumnLister.class,
+                    "varcharKeyHash", keyBlockHashCodeMt);
         } catch (IllegalAccessException e) {
             String msg = "Unable to access method handle";
+            throw new MantaPrestoRuntimeException(msg, e);
+        } catch (NoSuchMethodException e) {
+            String msg = "No such method";
             throw new MantaPrestoRuntimeException(msg, e);
         }
 
@@ -96,5 +101,18 @@ public class MantaTelegrafColumnLister implements ColumnLister {
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
                                          final MantaLogicalTable table) {
         return COLUMNS;
+    }
+
+    /**
+     * Calculates the hash for the key used by a varchar, varchar
+     * map implementation.
+     *
+     * @param block block to calculate hash for
+     * @param position block position
+     * @return hash as long value
+     */
+    public static long varcharKeyHash(final Block block, final int position) {
+        Objects.requireNonNull(block, "block is null");
+        return VarcharType.VARCHAR.hash(block, position);
     }
 }

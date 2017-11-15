@@ -9,8 +9,12 @@ package com.joyent.manta.presto.record.telegraf;
 
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.block.Block;
+import com.facebook.presto.spi.block.BlockBuilder;
+import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.MapBlock;
 import com.facebook.presto.spi.block.SingleMapBlock;
 import com.facebook.presto.spi.type.MapType;
+import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -18,12 +22,10 @@ import com.google.common.io.CountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 
 /**
@@ -52,46 +54,61 @@ public class MantaTelegrafJsonRecordCursor extends MantaJsonRecordCursor {
 
     @Override
     public Object getObject(final int field) {
-        @SuppressWarnings("unchecked")
-        final ObjectNode keyVals = (ObjectNode)row.get(field);
-        final MapType mapType = (MapType)getType(field);
+        Type type = getType(field);
 
-        final SingleMapBlock mapBlock = createSimpleMapBlock(mapType, keyVals);
+        if (type.equals(MantaTelegrafColumnLister.STRING_MAP)) {
+            @SuppressWarnings("unchecked")
+            final ObjectNode keyVals = (ObjectNode) getRow().get(field);
+            final MapType mapType = (MapType) getType(field);
 
-        return mapBlock;
+            return createSimpleMapBlock(mapType, keyVals);
+        }
+
+        return super.getObject(field);
     }
 
-    private Block createBlockWithValuesFromKeyValueBlock(Map<String, Long>[] maps)
-    {
-        List<String> keys = new ArrayList<>();
-        List<Long> values = new ArrayList<>();
-        int[] offsets = new int[maps.length + 1];
-        boolean[] mapIsNull = new boolean[maps.length];
-        for (int i = 0; i < maps.length; i++) {
-            Map<String, Long> map = maps[i];
-            mapIsNull[i] = map == null;
-            if (map == null) {
-                offsets[i + 1] = offsets[i];
-            }
-            else {
-                for (Map.Entry<String, Long> entry : map.entrySet()) {
-                    keys.add(entry.getKey());
-                    values.add(entry.getValue());
-                }
-                offsets[i + 1] = offsets[i] + map.size();
-            }
-        }
-        return mapType(VARCHAR, BIGINT).createBlockFromKeyValue(mapIsNull, offsets, createStringsBlock(keys), createLongsBlock(values));
+    @Override
+    protected long getTimestampFromLong(final JsonNode value) {
+        final long milliSecondConversionFactor = 1_000;
+        return super.getTimestampFromLong(value) * milliSecondConversionFactor;
     }
 
     private static SingleMapBlock createSimpleMapBlock(final MapType mapType,
-                                                       final ObjectNode keyvals) {
-        Iterator<Map.Entry<String, JsonNode>> itr = keyvals.fields();
+                                                       final ObjectNode objectNode) {
+        final int length = objectNode.size();
+        final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+        final int[] offsets = new int[] {0, length};
+        final boolean[] mapIsNeverNull = new boolean[] {true};
 
-        while (itr.hasNext()) {
+        final String[] keys = new String[length];
+        final String[] vals = new String[length];
 
+        for (int i = 0; itr.hasNext(); i++) {
+            final Map.Entry<String, JsonNode> entry = itr.next();
+            keys[i] = entry.getKey();
+            vals[i] = entry.getValue().asText();
         }
 
-        return mapType.createBlockFromKeyValue()
+        final MapBlock mapBlock = mapType.createBlockFromKeyValue(mapIsNeverNull, offsets,
+                createStringsBlock(keys), createStringsBlock(vals));
+        @SuppressWarnings("unchecked")
+        final SingleMapBlock singleMapBlock = (SingleMapBlock)mapBlock.getObject(0, Block.class);
+
+        return singleMapBlock;
+    }
+
+    private static Block createStringsBlock(final String[] values) {
+        final int expectedEntries = 100;
+        BlockBuilder builder = VARCHAR.createBlockBuilder(new BlockBuilderStatus(), expectedEntries);
+
+        for (String value : values) {
+            if (value == null) {
+                builder.appendNull();
+            } else {
+                VARCHAR.writeString(builder, value);
+            }
+        }
+
+        return builder.build();
     }
 }
