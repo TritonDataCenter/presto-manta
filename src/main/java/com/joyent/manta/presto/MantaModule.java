@@ -26,6 +26,7 @@ import com.joyent.manta.config.MapConfigContext;
 import com.joyent.manta.presto.column.RedirectingColumnLister;
 import com.joyent.manta.presto.record.json.MantaJsonDataFileObjectMapperProvider;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
+import com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableDeserializer;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
@@ -184,6 +185,7 @@ public class MantaModule implements Module {
         binder.bind(MantaLogicalTableProvider.class).in(Scopes.SINGLETON);
         binder.bind(RedirectingColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaJsonFileColumnLister.class).in(Scopes.SINGLETON);
+        binder.bind(MantaTelegrafColumnLister.class).in(Scopes.SINGLETON);
         binder.bind(MantaMetadata.class).in(Scopes.SINGLETON);
         binder.bind(MantaSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);

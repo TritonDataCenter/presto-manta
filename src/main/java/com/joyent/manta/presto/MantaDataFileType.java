@@ -34,6 +34,11 @@ public enum MantaDataFileType {
             "application/x-ndjson", "application/x-json-stream", "application/json"
     }),
     /**
+     * Telegraf new line delimited JSON format data files.
+     */
+    TELEGRAF_NDJSON(new String[] {"telegraf.json", "telegraf.ndjson"},
+            new String[] {"application/x-json-stream-telegraf"}),
+    /**
      * Comma separated value.
      */
     @JsonProperty("CSV")

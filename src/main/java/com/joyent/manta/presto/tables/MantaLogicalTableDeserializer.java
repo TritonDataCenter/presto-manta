@@ -73,12 +73,14 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 config.getMantaHomeDirectory());
 
         final String dataFileTypeValue = readRequiredString(objectNode.get("dataFileType"), "dataFileType", p);
-        final MantaDataFileType dataFileType = MantaDataFileType.searchAllValues(dataFileTypeValue);
+        final MantaDataFileType dataFileType;
 
-        if (dataFileType == null) {
+        try {
+            dataFileType = MantaDataFileType.valueOf(dataFileTypeValue);
+        } catch (IllegalArgumentException e) {
             String msg = String.format("Unsupported data file type specified [%s]",
                     dataFileTypeValue);
-            throw new JsonMappingException(p, msg);
+            throw new JsonMappingException(p, msg, e);
         }
 
         final Pattern directoryFilterRegex = readPattern(

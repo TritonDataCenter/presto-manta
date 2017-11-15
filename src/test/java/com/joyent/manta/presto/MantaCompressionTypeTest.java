@@ -30,6 +30,8 @@ public class MantaCompressionTypeTest {
         canDecompress(MantaCompressionType.GZIP);
     }
 
+    // Only Snappy decompression is supported, when compression is enabled uncomment me
+    @Test(enabled = false)
     public void canDecompressSnappy() throws Exception {
         canDecompress(MantaCompressionType.SNAPPY);
     }

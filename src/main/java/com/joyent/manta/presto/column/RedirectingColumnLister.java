@@ -11,6 +11,7 @@ import com.joyent.manta.presto.MantaConnectorId;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
+import com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 
@@ -29,18 +30,22 @@ import static java.util.Objects.requireNonNull;
 public class RedirectingColumnLister implements ColumnLister {
     private final MantaConnectorId connectorId;
     private final MantaJsonFileColumnLister jsonLister;
+    private final MantaTelegrafColumnLister telegrafLister;
 
     /**
      * Creates a new instance with the required properties.
      *
      * @param connectorId presto connection id object for debugging
      * @param jsonLister lister instance for processing JSON columns
+     * @param telegrafLister lister instance for processing telegraf JSON columns
      */
     @Inject
     public RedirectingColumnLister(final MantaConnectorId connectorId,
-                                   final MantaJsonFileColumnLister jsonLister) {
+                                   final MantaJsonFileColumnLister jsonLister,
+                                   final MantaTelegrafColumnLister telegrafLister) {
         this.connectorId = requireNonNull(connectorId, "Connector id is null");
         this.jsonLister = requireNonNull(jsonLister, "Json lister is null");
+        this.telegrafLister = requireNonNull(telegrafLister, "Telegraf lister is null");
     }
 
     @Override
@@ -54,7 +59,9 @@ public class RedirectingColumnLister implements ColumnLister {
             case NDJSON:
                 lister = jsonLister;
                 break;
-            case CSV:
+            case TELEGRAF_NDJSON:
+                lister = this.telegrafLister;
+                break;
             default:
                 String msg = "Unknown file type enum resolved";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
