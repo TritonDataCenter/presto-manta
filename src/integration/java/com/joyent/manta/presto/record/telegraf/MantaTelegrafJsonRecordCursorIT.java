@@ -16,7 +16,9 @@ import com.facebook.presto.spi.RecordPageSource;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import com.facebook.presto.spi.type.*;
+import com.facebook.presto.spi.type.SqlTimestamp;
+import com.facebook.presto.spi.type.TimestampType;
+import com.facebook.presto.spi.type.VarcharType;
 import com.facebook.presto.testing.TestingTransactionHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -40,9 +42,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -121,6 +120,7 @@ public class MantaTelegrafJsonRecordCursorIT {
             Assert.assertEquals(tags.get("datacenter"), "ap-southeast-1b");
 
             String name = VarcharType.VARCHAR.getSlice(blocks[2], 0).toStringUtf8();
+            Assert.assertEquals(name, "cpu");
 
             Map<String, Double> fields = (Map<String, Double>)MAP_STRING_DOUBLE.getObjectValue(session, blocks[3], 0);
             Assert.assertEquals(fields.size(), 2, "Map value was unexpected length");
@@ -142,10 +142,9 @@ public class MantaTelegrafJsonRecordCursorIT {
         {
             String tablePath = testPathPrefix + MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
             MantaHttpHeaders headers = new MantaHttpHeaders().setContentType("application/json");
+            byte[] data = mapper.writeValueAsBytes(table);
 
-            try (OutputStream out = mantaClient.putAsOutputStream(tablePath, headers)) {
-                mapper.writeValue(out, table);
-            }
+            mantaClient.put(tablePath, data, headers);
         }
 
         String dataFilePath = testPathPrefix + "data.telegraf.json";

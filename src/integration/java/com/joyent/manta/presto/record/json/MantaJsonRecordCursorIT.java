@@ -43,7 +43,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -181,10 +180,9 @@ public class MantaJsonRecordCursorIT {
         {
             String tablePath = testPathPrefix + MantaLogicalTableProvider.TABLE_DEFINITION_FILENAME;
             MantaHttpHeaders headers = new MantaHttpHeaders().setContentType("application/json");
+            byte[] data = mapper.writeValueAsBytes(table);
 
-            try (OutputStream out = mantaClient.putAsOutputStream(tablePath, headers)) {
-                mapper.writeValue(out, table);
-            }
+            mantaClient.put(tablePath, data, headers);
         }
 
         String dataFilePath = testPathPrefix + "data.ndjson";
