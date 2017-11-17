@@ -18,13 +18,14 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.org.apache.commons.io.output.CloseShieldOutputStream;
-import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPlugin;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
 import io.airlift.tpch.TpchTable;
 import org.apache.commons.compress.compressors.CompressorException;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,7 @@ public class MantaQueryRunner {
         Session session = testSessionBuilder().setCatalog("manta")
                 .setSchema("default").build();
 
+        final CompressorStreamFactory compressorStreamFactory = new CompressorStreamFactory();
         final ObjectMapper mapper = new ObjectMapper();
 
         for (TpchTable<?> table : TpchTable.getTables()) {
@@ -131,7 +133,7 @@ public class MantaQueryRunner {
             if (compressionType != null) {
                 dataFilePath += "." + compressionType.getFileExtension();
                 String compressor = compressionType.getCompressorName();
-                out = MantaCompressionType.COMPRESSOR_STREAM_FACTORY.createCompressorOutputStream(compressor,
+                out = compressorStreamFactory.createCompressorOutputStream(compressor,
                         mantaClient.putAsOutputStream(dataFilePath));
             } else {
                 out = mantaClient.putAsOutputStream(dataFilePath);

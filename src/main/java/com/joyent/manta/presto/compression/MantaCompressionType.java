@@ -9,16 +9,19 @@ package com.joyent.manta.presto.compression;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.io.Files;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
+import org.apache.commons.compress.compressors.CompressorStreamProvider;
 
 import java.io.InputStream;
 import java.util.Locale;
 import java.util.Map;
+import java.util.SortedMap;
 
 import static java.util.Objects.requireNonNull;
 
@@ -47,12 +50,12 @@ public enum MantaCompressionType {
      * Snappy raw algorithm implemented by the Xerial native library.
      */
     @JsonProperty("XERIAL_SNAPPY")
-    XERIAL_SNAPPY("xsnappy", XerialSnappyStreamProvider.XERIAL_SNAPPY_RAW),
+    XERIAL_SNAPPY("xsnappy", SnappyStreamProvider.XERIAL_SNAPPY_RAW),
     /**
      * Snappy raw algorithm implemented by the Hadoop native library.
      */
     @JsonProperty("HADOOP_SNAPPY")
-    HADOOP_SNAPPY("snappy", HadoopSnappyStreamProvider.HADOOP_SNAPPY_RAW),
+    HADOOP_SNAPPY("snappy", SnappyStreamProvider.HADOOP_SNAPPY_RAW),
     /**
      * XZ algorithm.
      */
@@ -65,11 +68,10 @@ public enum MantaCompressionType {
     private static final Map<String, MantaCompressionType> EXTENSION_LOOKUP;
 
     /**
-     * Singleton static instance of compressor stream factory that can be
+     * Singleton static instance of compressor stream providers that can be
      * safely reused.
      */
-    public static final CompressorStreamFactory COMPRESSOR_STREAM_FACTORY =
-        new CompressorStreamFactory();
+    public static final SortedMap<String, CompressorStreamProvider> COMPRESSOR_STREAM_PROVIDERS;
 
     static {
         ImmutableMap.Builder<String, MantaCompressionType> extensionMapBuilder =
@@ -79,6 +81,29 @@ public enum MantaCompressionType {
             extensionMapBuilder.put(type.fileExtension, type);
         }
         EXTENSION_LOOKUP = extensionMapBuilder.build();
+
+        /* We manually build a provider lookup because the SPI service loader
+         * has problems working properly when running within Presto. */
+
+        ImmutableSortedMap.Builder<String, CompressorStreamProvider> builder =
+                new ImmutableSortedMap.Builder<>(String.CASE_INSENSITIVE_ORDER);
+
+        SnappyStreamProvider snappyStreamProvider = new SnappyStreamProvider();
+
+        SortedMap<String, CompressorStreamProvider> defaultProviders =
+                new CompressorStreamFactory().getCompressorInputStreamProviders();
+
+        builder.putAll(defaultProviders);
+
+        if (!defaultProviders.containsKey(SnappyStreamProvider.XERIAL_SNAPPY_RAW)) {
+            builder.put(SnappyStreamProvider.XERIAL_SNAPPY_RAW, snappyStreamProvider);
+        }
+
+        if (!defaultProviders.containsKey(SnappyStreamProvider.HADOOP_SNAPPY_RAW)) {
+            builder.put(SnappyStreamProvider.HADOOP_SNAPPY_RAW, snappyStreamProvider);
+        }
+
+        COMPRESSOR_STREAM_PROVIDERS = builder.build();
     }
 
     /**
@@ -164,9 +189,18 @@ public enum MantaCompressionType {
         requireNonNull(in, "InputStream to decompress is null");
         final String algorithm = compressorName;
 
+        final CompressorStreamProvider provider = COMPRESSOR_STREAM_PROVIDERS.get(
+                algorithm);
+
+        if (provider == null) {
+            String msg = "No compressor provider matches the passed string";
+            MantaPrestoRuntimeException e = new MantaPrestoRuntimeException(msg);
+            e.setContextValue("compressorName", algorithm);
+            throw e;
+        }
+
         try {
-            return COMPRESSOR_STREAM_FACTORY.createCompressorInputStream(
-                    algorithm, in);
+            return provider.createCompressorInputStream(algorithm, in, true);
         } catch (CompressorException e) {
             String msg = "Unable to create decompression stream";
             MantaPrestoRuntimeException me = new MantaPrestoRuntimeException(msg, e);
