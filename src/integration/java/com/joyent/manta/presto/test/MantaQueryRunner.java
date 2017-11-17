@@ -10,14 +10,12 @@ package com.joyent.manta.presto.test;
 import com.facebook.presto.Session;
 import com.facebook.presto.plugin.memory.MemoryPlugin;
 import com.facebook.presto.testing.MaterializedResult;
-import com.facebook.presto.testing.MaterializedRow;
 import com.facebook.presto.tests.DistributedQueryRunner;
 import com.facebook.presto.tpch.TpchPlugin;
+import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.org.apache.commons.io.output.CloseShieldOutputStream;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPlugin;
 import com.joyent.manta.presto.compression.MantaCompressionType;
@@ -31,14 +29,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +51,12 @@ public class MantaQueryRunner {
     public static final String CATALOG = "manta";
 
     private static final Logger LOG = LoggerFactory.getLogger(MantaQueryRunner.class);
+
+    private final static CompressorStreamFactory COMPRESSOR_STREAM_FACTORY =
+            new CompressorStreamFactory();
+
+    private final static MinimalPrettyPrinter PRETTY_PRINTER =
+            new MinimalPrettyPrinter("\n");
 
     private final String schemaPath;
 
@@ -110,7 +112,6 @@ public class MantaQueryRunner {
         Session session = testSessionBuilder().setCatalog("manta")
                 .setSchema("default").build();
 
-        final CompressorStreamFactory compressorStreamFactory = new CompressorStreamFactory();
         final ObjectMapper mapper = new ObjectMapper();
 
         for (TpchTable<?> table : TpchTable.getTables()) {
@@ -125,53 +126,21 @@ public class MantaQueryRunner {
 
             MaterializedResult result = queryRunner.execute(session, sql);
 
-            String dataFilePath = rootPath + SEPARATOR + "data."
-                    + dataFileType.getDefaultExtension();
+            final Path tempFile = createTempFile(tableName, compressionType);
 
-            final OutputStream out;
-
-            if (compressionType != null) {
-                dataFilePath += "." + compressionType.getFileExtension();
-                String compressor = compressionType.getCompressorName();
-                out = compressorStreamFactory.createCompressorOutputStream(compressor,
-                        mantaClient.putAsOutputStream(dataFilePath));
-            } else {
-                out = mantaClient.putAsOutputStream(dataFilePath);
+            try (OutputStream out = tempFileOutputStream(tempFile, compressionType)) {
+                MaterializedRowToObjectNodeIterator itr = new MaterializedRowToObjectNodeIterator(
+                        columns, result.iterator());
+                mapper.writerFor(ObjectNode.class).with(PRETTY_PRINTER)
+                        .writeValues(out).writeAll(itr);
             }
 
-            final char lineSeparator = "\n".charAt(0);
-            int rows = 0;
+            final String dataFilePath = createDataFilePath(rootPath, dataFileType,
+                    compressionType);
 
-            try {
-                Iterator<MaterializedRow> itr = result.iterator();
-
-                while (itr.hasNext()) {
-                    MaterializedRow row = itr.next();
-                    ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
-
-                    for (int i = 0; i < row.getFieldCount(); i++) {
-                        final Object field = row.getField(i);
-                        final String column = columns.get(i);
-
-                        writeJsonForType(objectNode, field, column);
-                    }
-
-                    // The mapper tries to close the stream, so we have to
-                    // prevent it from doing so by using a close shield
-                    CloseShieldOutputStream shieldOutputStream =
-                            new CloseShieldOutputStream(out);
-                    mapper.writeValue(shieldOutputStream, objectNode);
-                    rows++;
-                    if (itr.hasNext()) {
-                        out.write(lineSeparator);
-                    }
-                }
-            } finally {
-                out.close();
-
-                LOG.info("Wrote {} rows to table {} in file {}", rows, tableName,
-                        dataFilePath);
-            }
+            mantaClient.put(dataFilePath, tempFile.toFile());
+            LOG.info("Pushing table [{}] temp file to Manta path [{}]", tableName,
+                    dataFilePath);
 
             tablesDefinition.add(new MantaLogicalTable(tableName,
                     rootPath, dataFileType));
@@ -182,6 +151,50 @@ public class MantaQueryRunner {
 
         try (OutputStream out = mantaClient.putAsOutputStream(tableDefinitionJsonPath)) {
             mapper.writeValue(out, tablesDefinition);
+        }
+    }
+
+    private static String createDataFilePath(final String rootPath,
+                                             final MantaDataFileType dataFileType,
+                                             final MantaCompressionType compressionType) {
+        String dataFilePath = rootPath + SEPARATOR + "data."
+                + dataFileType.getDefaultExtension();
+
+        if (compressionType != null) {
+            dataFilePath += "." + compressionType.getFileExtension();
+        }
+
+        return dataFilePath;
+    }
+
+    private static Path createTempFile(final String tableName,
+                                       final MantaCompressionType compressionType)
+            throws IOException {
+        String suffix = ".ndjson";
+
+        if (compressionType != null) {
+            suffix += "." + compressionType.getFileExtension();
+        }
+
+        Path tempFile = Files.createTempFile(tableName + "-", suffix);
+        tempFile.toFile().deleteOnExit();
+
+        return tempFile;
+    }
+
+    private static OutputStream tempFileOutputStream(final Path tempFile,
+                                                     final MantaCompressionType compressionType)
+            throws IOException, CompressorException {
+
+
+        OpenOption[] openOptions = new OpenOption[] {StandardOpenOption.CREATE};
+
+        if (compressionType != null) {
+            String compressor = compressionType.getCompressorName();
+            return COMPRESSOR_STREAM_FACTORY.createCompressorOutputStream(compressor,
+                    Files.newOutputStream(tempFile, openOptions));
+        } else {
+            return Files.newOutputStream(tempFile, openOptions);
         }
     }
 
@@ -196,47 +209,5 @@ public class MantaQueryRunner {
         return result.getMaterializedRows().stream()
                 .map(r -> Objects.toString(r.getField(0)))
                 .collect(Collectors.toCollection(ArrayList::new));
-    }
-
-    private static void writeJsonForType(final ObjectNode node, Object field,
-                                         final String column) {
-        if (field.getClass().equals(int.class)) {
-            node.put(column, (int)field);
-        } else if (field.getClass().equals(Integer.class)) {
-            node.put(column, (Integer)field);
-        } else if (field.getClass().equals(long.class)) {
-            node.put(column, (long)field);
-        } else if (field.getClass().equals(Long.class)) {
-            node.put(column, (Long)field);
-        } else if (field.getClass().equals(short.class)) {
-            node.put(column, (short)field);
-        } else if (field.getClass().equals(short.class)) {
-            node.put(column, (Short)field);
-        } else if (field.getClass().equals(float.class)) {
-            node.put(column, (float)field);
-        } else if (field.getClass().equals(Float.class)) {
-            node.put(column, (Float)field);
-        } else if (field.getClass().equals(double.class)) {
-            node.put(column, (double)field);
-        } else if (field.getClass().equals(Double.class)) {
-            node.put(column, (Double)field);
-        } else if (field.getClass().equals(boolean.class)) {
-            node.put(column, (boolean)field);
-        } else if (field.getClass().equals(Boolean.class)) {
-            node.put(column, (Boolean)field);
-        } else if (field.getClass().equals(BigDecimal.class)) {
-            node.put(column, (BigDecimal)field);
-        } else if (field.getClass().equals(String.class)) {
-            node.put(column, (String)field);
-        } else if (field.getClass().equals(java.sql.Date.class)) {
-            final long epoch = ((java.sql.Date)field).getTime();
-            final Instant instant = Instant.ofEpochMilli(epoch);
-            final LocalDate date = LocalDateTime.ofInstant(
-                    instant, ZoneOffset.UTC).toLocalDate();
-
-            node.putPOJO(column,  date.toString());
-        } else {
-            node.putPOJO(column, field);
-        }
     }
 }

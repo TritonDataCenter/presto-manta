@@ -10,6 +10,7 @@ package com.joyent.manta.presto.compression;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharStreams;
 import org.apache.commons.compress.compressors.CompressorOutputStream;
+import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
@@ -21,7 +22,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
 import static com.joyent.manta.presto.compression.MantaCompressionType.BZIP2;
-import static com.joyent.manta.presto.compression.MantaCompressionType.COMPRESSOR_STREAM_FACTORY;
 import static com.joyent.manta.presto.compression.MantaCompressionType.GZIP;
 import static com.joyent.manta.presto.compression.MantaCompressionType.HADOOP_SNAPPY;
 import static com.joyent.manta.presto.compression.MantaCompressionType.LZ4;
@@ -78,7 +78,8 @@ public class MantaCompressionTypeTest {
         byte[] expectedBytes = expected.getBytes(StandardCharsets.UTF_8);
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        try (CompressorOutputStream cout = COMPRESSOR_STREAM_FACTORY.createCompressorOutputStream(compressionType.getCompressorName(), bout)) {
+        CompressorStreamFactory compressorStreamFactory = new CompressorStreamFactory();
+        try (CompressorOutputStream cout = compressorStreamFactory.createCompressorOutputStream(compressionType.getCompressorName(), bout)) {
             cout.write(expectedBytes);
             cout.flush();
         }
