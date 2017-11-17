@@ -67,6 +67,7 @@
         <dependency.presto.version>0.184</dependency.presto.version>
         <dependency.commons-compress.version>1.14</dependency.commons-compress.version>
         <dependency.xz-version>1.6</dependency.xz-version>
+        <dependency.snappy-version>1.1.1.7</dependency.snappy-version>
         <dependency.guava.version>23.0</dependency.guava.version>
         <dependency.commons-lang>3.6</dependency.commons-lang>
         <dependency.slfj.version>1.7.21</dependency.slfj.version>
@@ -146,6 +147,12 @@
             <groupId>org.tukaani</groupId>
             <artifactId>xz</artifactId>
             <version>${dependency.xz-version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+            <version>${dependency.snappy-version}</version>
         </dependency>
 
         <dependency>

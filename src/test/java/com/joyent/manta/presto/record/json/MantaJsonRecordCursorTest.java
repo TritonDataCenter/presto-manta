@@ -14,10 +14,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CountingInputStream;
 import com.google.common.io.Files;
-import com.joyent.manta.presto.MantaCompressionType;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import io.airlift.slice.Slice;
 import org.junit.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -36,19 +37,24 @@ public class MantaJsonRecordCursorTest {
     private static final boolean OUTPUT_ENABLED = false;
 
     public void canParseJsonGZSampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.gz");
+        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.gz");
     }
 
     public void canParseJsonHadoopSnappySampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.snappy");
+        try {
+            canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.snappy");
+        } catch (UnsupportedOperationException e) {
+            throw new SkipException("Native libraries need to be loaded in "
+                    + "order to use decompression algorithm");
+        }
     }
 
     public void canParseJsonXZSampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.xz");
+        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.xz");
     }
 
     public void canParseJsonBzip2SampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/sample-data.ndjson.bz2");
+        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.bz2");
     }
 
     @SuppressWarnings("Duplicates")

@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.org.apache.commons.io.output.CloseShieldOutputStream;
-import com.joyent.manta.presto.MantaCompressionType;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPlugin;
 import com.joyent.manta.presto.tables.MantaLogicalTable;

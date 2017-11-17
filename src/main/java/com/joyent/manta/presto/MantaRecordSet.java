@@ -16,6 +16,7 @@ import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;

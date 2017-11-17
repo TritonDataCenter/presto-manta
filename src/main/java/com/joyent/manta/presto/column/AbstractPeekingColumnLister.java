@@ -13,7 +13,7 @@ import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.http.MantaHttpHeaders;
-import com.joyent.manta.presto.MantaCompressionType;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.MantaConnectorId;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;

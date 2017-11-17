@@ -18,6 +18,7 @@ import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.config.DefaultsConfigContext;
 import com.joyent.manta.config.EnvVarConfigContext;
 import com.joyent.manta.config.MapConfigContext;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.test.MantaQueryRunner;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.h2.util.StringUtils;

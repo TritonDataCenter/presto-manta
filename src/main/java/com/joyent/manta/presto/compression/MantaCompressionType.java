@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package com.joyent.manta.presto;
+package com.joyent.manta.presto.compression;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
@@ -44,10 +44,15 @@ public enum MantaCompressionType {
      */
     LZ4("lz4", CompressorStreamFactory.LZ4_BLOCK),
     /**
-     * Snappy raw algorithm.
+     * Snappy raw algorithm implemented by the Xerial native library.
      */
-    @JsonProperty("SNAPPY")
-    SNAPPY("snappy", CompressorStreamFactory.SNAPPY_RAW),
+    @JsonProperty("XERIAL_SNAPPY")
+    XERIAL_SNAPPY("xsnappy", XerialSnappyStreamProvider.XERIAL_SNAPPY_RAW),
+    /**
+     * Snappy raw algorithm implemented by the Hadoop native library.
+     */
+    @JsonProperty("HADOOP_SNAPPY")
+    HADOOP_SNAPPY("snappy", HadoopSnappyStreamProvider.HADOOP_SNAPPY_RAW),
     /**
      * XZ algorithm.
      */
@@ -156,6 +161,7 @@ public enum MantaCompressionType {
      * @return decompression stream associated with this instance
      */
     public CompressorInputStream createStream(final InputStream in) {
+        requireNonNull(in, "InputStream to decompress is null");
         final String algorithm = compressorName;
 
         try {

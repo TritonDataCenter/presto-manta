@@ -10,6 +10,7 @@ package com.joyent.manta.presto.tables;
 import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Joiner;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.joyent.manta.client.MantaClient;
@@ -177,7 +178,10 @@ public class MantaLogicalTableProvider {
         final String dir = schemaMapping.get(schemaName);
 
         if (dir == null) {
-            throw new MantaPrestoSchemaNotFoundException(schemaName);
+            MantaPrestoSchemaNotFoundException e = new MantaPrestoSchemaNotFoundException(schemaName);
+            e.setContextValue("schemaMapping", Joiner.on(',').withKeyValueSeparator('=').join(schemaMapping));
+
+            throw e;
         }
 
         return MantaUtils.formatPath(dir + SEPARATOR

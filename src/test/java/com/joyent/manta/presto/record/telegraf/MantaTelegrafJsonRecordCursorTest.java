@@ -13,8 +13,8 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.io.CountingInputStream;
 import com.google.common.io.Files;
-import com.joyent.manta.presto.MantaCompressionType;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.record.json.MantaJsonDataFileObjectMapperProvider;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 import io.airlift.slice.Slice;
@@ -32,7 +32,7 @@ public class MantaTelegrafJsonRecordCursorTest {
     private static final boolean OUTPUT_ENABLED = true;
 
     public void canParseSampleRecordsWithoutAnError() throws IOException {
-        canParseTelegrafJsonSampleRecordsWithoutAnError("test-data/metrics-2017-06-01.telegraf.json");
+        canParseTelegrafJsonSampleRecordsWithoutAnError("test-data/cursor/metrics-2017-06-01.telegraf.json");
     }
 
     @SuppressWarnings("Duplicates")

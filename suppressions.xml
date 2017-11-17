@@ -11,4 +11,8 @@
     <suppress checks="IllegalThrows" files="^.*Test\.java$" />
     <suppress checks="AvoidStarImport" files="^.*Test\.java$" />
     <suppress checks="ImportControl" files="^.*Test\.java$" />
+
+    <!-- ignore all checks for files copied from the Hadoop project -->
+    <suppress checks="[a-zA-Z0-9]*" files="org[\\/]apache[\\/]hadoop[\\/]" />
+
 </suppressions>

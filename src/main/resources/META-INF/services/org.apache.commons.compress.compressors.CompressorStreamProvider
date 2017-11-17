@@ -1,0 +1,2 @@
+com.joyent.manta.presto.compression.XerialSnappyStreamProvider
+com.joyent.manta.presto.compression.HadoopSnappyStreamProvider
