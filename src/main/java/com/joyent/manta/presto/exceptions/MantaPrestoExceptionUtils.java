@@ -10,6 +10,9 @@ package com.joyent.manta.presto.exceptions;
 import com.joyent.manta.client.MantaObject;
 import org.apache.commons.lang3.exception.ExceptionContext;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 /**
  * Class providing utility functions for exception classes.
  *
@@ -39,5 +42,12 @@ public final class MantaPrestoExceptionUtils {
         context.setContextValue("contentType", object.getContentType());
         context.setContextValue("etag", object.getEtag());
         context.setContextValue("lastModified", object.getLastModifiedTime());
+
+        try {
+            context.setContextValue("hostname", InetAddress.getLocalHost().getHostName());
+        } catch (UnknownHostException | NullPointerException e) {
+            // Do nothing - just indicate that the hostname can't be known
+            context.setContextValue("hostname", "unknown");
+        }
     }
 }

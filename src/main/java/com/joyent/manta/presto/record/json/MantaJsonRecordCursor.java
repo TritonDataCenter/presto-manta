@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -175,6 +177,13 @@ public class MantaJsonRecordCursor implements RecordCursor {
             MantaPrestoRuntimeException me = new MantaPrestoRuntimeException(e);
             me.setContextValue("objectPath", objectPath);
             me.addContextValue("line", lines);
+
+            try {
+                me.setContextValue("hostname", InetAddress.getLocalHost().getHostName());
+            } catch (UnknownHostException | NullPointerException he) {
+                // Do nothing - just indicate that the hostname can't be known
+                me.setContextValue("hostname", "unknown");
+            }
 
             throw me;
         }
