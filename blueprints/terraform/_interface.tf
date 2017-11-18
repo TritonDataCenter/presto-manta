@@ -66,7 +66,7 @@ variable "key_path_private" {
 }
 
 variable "machine_package_zone" {
-  default     = "g4-general-16G"
+  default     = "g4-highcpu-16G"
   description = "Machine package size to use."
 }
 

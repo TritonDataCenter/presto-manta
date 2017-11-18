@@ -250,6 +250,27 @@ function install_presto() {
   install -d -o ${user_presto} -g ${user_presto} /etc/manta/
   install -d -o ${user_presto} -g ${user_presto} ${path_install}/plugin/manta
 
+  log "Adding CPU dynamic resizing script"
+  cat << 'EOF' > /usr/local/bin/rewrite_presto_cpu_limit
+#!/bin/bash
+
+unset LD_PRELOAD
+
+if [ -d "/native" ]; then
+  TMPFILE="$(mktemp)"
+  cat /etc/default/presto | sed "s/_NUM_CPUS=.*/_NUM_CPUS=`/usr/local/bin/proclimit`/" > ${TMPFILE}
+  cp ${TMPFILE} /etc/default/presto
+  rm ${TMPFILE}
+fi
+EOF
+  chmod +x /usr/local/bin/rewrite_presto_cpu_limit
+
+  log "Installing Snappy native libraries"
+  wget -q -O /tmp/hadoop-snappy-native-linux-amd64.tar.gz "https://us-east.manta.joyent.com/elijah.zupancic/public/hadoop/hadoop-snappy-native-linux-amd64.tar.gz"
+  echo 'ad0fcceb268ac01ecf50395a0aa58faa54239a6b3aebfa13fb7e3c6318dcb1e3  /tmp/hadoop-snappy-native-linux-amd64.tar.gz'
+  tar -C /usr/local -xzf /tmp/hadoop-snappy-native-linux-amd64.tar.gz
+
+
   log "Installing Presto Manta Connector ${version_presto_manta}..."
   wget -q -O ${manta_presto_library_path} "https://github.com/joyent/presto-manta/releases/download/${version_presto_manta}/presto-manta-${version_presto_manta}-jar-with-dependencies.jar"
 
@@ -259,8 +280,7 @@ node.id=$(hostname)
 node.data-dir=/var/lib/presto/
 " > /etc/presto/node.properties
 
-  /usr/bin/printf "
--server
+  /usr/bin/printf "-server
 -XX:MaxRAM=15500m
 -Xmx14000m
 -XX:+UseG1GC
@@ -271,6 +291,7 @@ node.data-dir=/var/lib/presto/
 -XX:+AggressiveOpts
 -XX:+HeapDumpOnOutOfMemoryError
 -XX:+ExitOnOutOfMemoryError
+-Djava.library.path=/usr/local/lib
 " > /etc/presto/jvm.config
 
   #
@@ -286,8 +307,10 @@ node.data-dir=/var/lib/presto/
 coordinator=true
 node-scheduler.include-coordinator=false
 http-server.http.port=${http_port}
-query.max-memory=50GB
-query.max-memory-per-node=1GB
+query.max-memory-per-node=2GB
+node-scheduler.max-splits-per-node=52
+task.max-partial-aggregation-memory=32MB
+query.schedule-split-batch-size=30000
 discovery-server.enabled=true
 discovery.uri=http://localhost:${http_port}
 " > /etc/presto/config.properties
@@ -305,8 +328,10 @@ discovery.uri=http://localhost:${http_port}
 #
 coordinator=false
 http-server.http.port=${http_port}
-query.max-memory=50GB
-query.max-memory-per-node=5GB
+query.max-memory-per-node=8GB
+node-scheduler.max-splits-per-node=52
+task.max-partial-aggregation-memory=32MB
+query.schedule-split-batch-size=30000
 discovery.uri=http://${address_presto_coordinator}:${http_port}
 " > /etc/presto/config.properties
   fi
@@ -324,8 +349,8 @@ discovery.uri=http://${address_presto_coordinator}:${http_port}
 coordinator=true
 node-scheduler.include-coordinator=true
 http-server.http.port=${http_port}
-query.max-memory=5GB
-query.max-memory-per-node=1GB
+query.max-memory=4GB
+node-scheduler.max-splits-per-node=24
 discovery-server.enabled=true
 discovery.uri=http://localhost:${http_port}
 " > /etc/presto/config.properties
@@ -341,25 +366,34 @@ manta.url=${manta_url}
 manta.user=${manta_user}
 manta.key_path=/etc/manta/manta_key
 manta.key_id=$(ssh-keygen -E md5 -l -q -f /etc/manta/manta_key | awk -F'(MD5:)|( )' '{print $3}')
+manta.timeout=30000
+manta.connection_request_timeout=60000
+manta.tcp_socket_timeout=20000
 manta.schema.default=~~/stor/presto
 " > /etc/presto/catalog/manta.properties
 
   chown ${user_presto}:${user_presto} /etc/presto/catalog/manta.properties
 
-  /usr/bin/printf "
-PRESTO_OPTS= \
-    --pid-file=${pid_file} \
-    --node-config=/etc/presto/node.properties \
-    --jvm-config=/etc/presto/jvm.config \
-    --config=/etc/presto/config.properties \
-    --launcher-log-file=/var/log/presto/launcher.log \
-    --server-log-file=/var/log/presto/server.log \
-    -Dhttp-server.log.path=/var/log/presto/http-request.log \
-    -Dcatalog.config-dir=/etc/presto/catalog
+  if [[ -d "/native" ]]; then
+    echo "LD_PRELOAD=/usr/local/numcpus/libnumcpus.so" > /etc/default/presto
+    echo "_NUM_CPUS=`/usr/local/bin/proclimit`" >> /etc/default/presto
+  fi
+
+  /usr/bin/printf "PRESTO_OPTS= \
+--pid-file=${pid_file} \
+--node-config=/etc/presto/node.properties \
+--jvm-config=/etc/presto/jvm.config \
+--config=/etc/presto/config.properties \
+--launcher-log-file=/var/log/presto/launcher.log \
+--server-log-file=/var/log/presto/server.log \
+-Dhttp-server.log.path=/var/log/presto/http-request.log \
+-Dcatalog.config-dir=/etc/presto/catalog
 
 [Install]
 WantedBy=default.target
-" > /etc/default/presto
+" >> /etc/default/presto
+
+chown ${user_presto}:${user_presto} /etc/default/presto
 
   /usr/bin/printf "
 [Unit]
@@ -374,10 +408,7 @@ Type=forking
 PIDFile=${pid_file}
 RuntimeDirectory=presto
 EnvironmentFile=/etc/default/presto
-Environment=MANTA_URL=${manta_url}
-Environment=MANTA_USER=${manta_user}
-Environment=MANTA_KEY_ID=${manta_key_id}
-Environment=MANTA_KEY_PATH=/etc/manta/manta_key
+ExecStartPre=/usr/local/bin/rewrite_presto_cpu_limit
 ExecStart=${path_install}/bin/launcher start \$PRESTO_OPTS
 ExecStop=${path_install}/bin/launcher stop \$PRESTO_OPTS
 
