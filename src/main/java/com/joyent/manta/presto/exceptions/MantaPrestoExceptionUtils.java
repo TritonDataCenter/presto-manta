@@ -8,7 +8,10 @@
 package com.joyent.manta.presto.exceptions;
 
 import com.joyent.manta.client.MantaObject;
+import com.joyent.manta.http.MantaHttpHeaders;
+import com.joyent.manta.util.MantaVersion;
 import org.apache.commons.lang3.exception.ExceptionContext;
+import org.slf4j.MDC;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -33,6 +36,9 @@ public final class MantaPrestoExceptionUtils {
      */
     public static void annotateMantaObjectDetails(
             final MantaObject object, final ExceptionContext context) {
+        context.setContextValue("mantaSdkVersion", MantaVersion.VERSION);
+        context.setContextValue("hostname", findHostname());
+
         if (object == null) {
             return;
         }
@@ -42,12 +48,20 @@ public final class MantaPrestoExceptionUtils {
         context.setContextValue("contentType", object.getContentType());
         context.setContextValue("etag", object.getEtag());
         context.setContextValue("lastModified", object.getLastModifiedTime());
+        context.setContextValue("responseTime", object.getHeaderAsString("x-response-time"));
+        context.setContextValue("server", object.getHeaderAsString("x-server-name"));
+        context.setContextValue("requestId", object.getHeaderAsString(MantaHttpHeaders.REQUEST_ID));
+        /* This is a crude hack that gets the load balancer address from the
+         * SLF4J logger as it was set within the Manta SDK. */
+        context.setContextValue("loadBalancer", MDC.get("loadBalancerAddress"));
+    }
 
+    private static String findHostname() {
         try {
-            context.setContextValue("hostname", InetAddress.getLocalHost().getHostName());
+            return InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException | NullPointerException e) {
             // Do nothing - just indicate that the hostname can't be known
-            context.setContextValue("hostname", "unknown");
+            return "unknown";
         }
     }
 }

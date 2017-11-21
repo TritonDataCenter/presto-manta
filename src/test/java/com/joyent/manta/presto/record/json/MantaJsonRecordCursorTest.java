@@ -12,10 +12,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.CountingInputStream;
-import com.google.common.io.Files;
+import com.joyent.manta.client.MantaObject;
+import com.joyent.manta.presto.MantaCountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
-import com.joyent.manta.presto.compression.MantaCompressionType;
 import io.airlift.slice.Slice;
 import org.junit.Assert;
 import org.testng.SkipException;
@@ -31,6 +30,8 @@ import static com.facebook.presto.spi.type.DateType.DATE;
 import static com.facebook.presto.spi.type.IntegerType.INTEGER;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
 import static com.facebook.presto.type.JsonType.JSON;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Test
 public class MantaJsonRecordCursorTest {
@@ -65,23 +66,16 @@ public class MantaJsonRecordCursorTest {
         final long totalBytes = 37782293;
 
         InputStream in = classLoader.getResourceAsStream(testFile);
-        String extension = Files.getFileExtension(testFile);
-        InputStream compressedIn;
+        MantaObject object = mock(MantaObject.class);
+        when(object.getPath()).thenReturn(testFile);
 
-        if (MantaCompressionType.isExtensionSupported(extension)) {
-            MantaCompressionType compression = MantaCompressionType.valueOfExtension(extension);
-            compressedIn = compression.createStream(in);
-        } else {
-            compressedIn = in;
-        }
-
-        CountingInputStream cin = new CountingInputStream(compressedIn);
+        MantaCountingInputStream cin = new MantaCountingInputStream(in, object);
         MantaJsonDataFileObjectMapperProvider mapperProvider = new MantaJsonDataFileObjectMapperProvider();
         ObjectMapper mapper = mapperProvider.get();
         ObjectReader streamingReader = mapper.readerFor(ObjectNode.class);
 
-        try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(
-                columns, "/user/fake/object", totalBytes, cin,
+        try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(null,
+                columns, cin.getPath(), totalBytes, cin,
                 streamingReader)) {
 
             final int columnLen = columns.size();

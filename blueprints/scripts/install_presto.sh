@@ -308,8 +308,8 @@ coordinator=true
 node-scheduler.include-coordinator=false
 http-server.http.port=${http_port}
 query.max-memory-per-node=2GB
-node-scheduler.max-splits-per-node=52
-task.max-partial-aggregation-memory=32MB
+node-scheduler.max-splits-per-node=48
+task.max-partial-aggregation-memory=64MB
 query.schedule-split-batch-size=30000
 discovery-server.enabled=true
 discovery.uri=http://localhost:${http_port}
@@ -329,8 +329,8 @@ discovery.uri=http://localhost:${http_port}
 coordinator=false
 http-server.http.port=${http_port}
 query.max-memory-per-node=8GB
-node-scheduler.max-splits-per-node=52
-task.max-partial-aggregation-memory=32MB
+node-scheduler.max-splits-per-node=48
+task.max-partial-aggregation-memory=64MB
 query.schedule-split-batch-size=30000
 discovery.uri=http://${address_presto_coordinator}:${http_port}
 " > /etc/presto/config.properties
@@ -362,13 +362,14 @@ discovery.uri=http://localhost:${http_port}
 
   /usr/bin/printf "connector.name=manta
 manta.max_connections=48
+manta.retries=6
 manta.url=${manta_url}
 manta.user=${manta_user}
 manta.key_path=/etc/manta/manta_key
 manta.key_id=$(ssh-keygen -E md5 -l -q -f /etc/manta/manta_key | awk -F'(MD5:)|( )' '{print $3}')
-manta.timeout=30000
+manta.timeout=5000
+manta.tcp_socket_timeout=5000
 manta.connection_request_timeout=60000
-manta.tcp_socket_timeout=20000
 manta.schema.default=~~/stor/presto
 " > /etc/presto/catalog/manta.properties
 

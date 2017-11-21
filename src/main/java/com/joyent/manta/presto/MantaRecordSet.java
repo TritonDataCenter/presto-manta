@@ -12,21 +12,18 @@ import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.google.common.collect.ImmutableList;
-import com.google.common.io.CountingInputStream;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
-import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 import com.joyent.manta.presto.record.telegraf.MantaTelegrafJsonRecordCursor;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
 
@@ -38,14 +35,17 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class MantaRecordSet implements RecordSet {
-    private static final int STREAM_BUFFER_SIZE = 65536;
-
     private final List<MantaColumn> columns;
     private final List<Type> columnTypes;
     private final String objectPath;
     private final MantaClient mantaClient;
     private final MantaDataFileType dataFileType;
     private final ObjectReader streamingReader;
+
+    private final Supplier<MantaCountingInputStream> streamRecreator = () -> {
+        final MantaObjectInputStream in = buildSourceStream();
+        return new MantaCountingInputStream(in);
+    };
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -81,30 +81,17 @@ public class MantaRecordSet implements RecordSet {
 
     @Override
     public RecordCursor cursor() {
-        final MantaObjectInputStream mantaInputStream;
-        final InputStream in;
-
-        try {
-            mantaInputStream = mantaClient.getAsInputStream(objectPath);
-            InputStream wrapped = MantaCompressionType.wrapMantaStreamIfCompressed(mantaInputStream);
-            in = new BufferedInputStream(wrapped, STREAM_BUFFER_SIZE);
-        } catch (IOException e) {
-            String msg = "There was a problem opening a connection to Manta";
-            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
-            me.addContextValue("objectPath", objectPath);
-            throw me;
-        }
-
-        long totalBytes = mantaInputStream.getContentLength();
-        CountingInputStream cin = new CountingInputStream(in);
+        final MantaObjectInputStream in = buildSourceStream();
+        final MantaCountingInputStream mantaInputStream = new MantaCountingInputStream(in);
+        final long totalBytes = mantaInputStream.getContentLength();
 
         switch (dataFileType) {
             case NDJSON:
-                return new MantaJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin, streamingReader);
+                return new MantaJsonRecordCursor(streamRecreator, columns, objectPath,
+                        totalBytes, mantaInputStream, streamingReader);
             case TELEGRAF_NDJSON:
-                return new MantaTelegrafJsonRecordCursor(columns, objectPath,
-                        totalBytes, cin, streamingReader);
+                return new MantaTelegrafJsonRecordCursor(streamRecreator, columns, objectPath,
+                        totalBytes, mantaInputStream, streamingReader);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
@@ -113,5 +100,16 @@ public class MantaRecordSet implements RecordSet {
                 throw me;
         }
 
+    }
+
+    private MantaObjectInputStream buildSourceStream() {
+        try {
+            return mantaClient.getAsInputStream(objectPath);
+        } catch (IOException e) {
+            String msg = "There was a problem opening a connection to Manta";
+            MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
+            me.addContextValue("objectPath", objectPath);
+            throw me;
+        }
     }
 }

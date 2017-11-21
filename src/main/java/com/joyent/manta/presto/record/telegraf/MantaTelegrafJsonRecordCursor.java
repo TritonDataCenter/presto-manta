@@ -10,11 +10,12 @@ package com.joyent.manta.presto.record.telegraf;
 import com.facebook.presto.spi.RecordCursor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectReader;
-import com.google.common.io.CountingInputStream;
+import com.joyent.manta.presto.MantaCountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * {@link RecordCursor} implementation that reads each new line of JSON into
@@ -26,18 +27,20 @@ public class MantaTelegrafJsonRecordCursor extends MantaJsonRecordCursor {
     /**
      * Creates a new instance based on the specified parameters.
      *
+     * @param streamRecreator function used to recreate the underlying stream providing the JSON data
      * @param columns list of columns in table
      * @param objectPath path to object in Manta
      * @param totalBytes total number of bytes in source object
      * @param countingStream input stream that counts the number of bytes processed
      * @param streamingReader streaming json deserialization reader
      */
-    public MantaTelegrafJsonRecordCursor(final List<MantaColumn> columns,
+    public MantaTelegrafJsonRecordCursor(final Supplier<MantaCountingInputStream> streamRecreator,
+                                         final List<MantaColumn> columns,
                                          final String objectPath,
                                          final Long totalBytes,
-                                         final CountingInputStream countingStream,
+                                         final MantaCountingInputStream countingStream,
                                          final ObjectReader streamingReader) {
-        super(columns, objectPath, totalBytes, countingStream, streamingReader);
+        super(streamRecreator, columns, objectPath, totalBytes, countingStream, streamingReader);
     }
 
     @Override
