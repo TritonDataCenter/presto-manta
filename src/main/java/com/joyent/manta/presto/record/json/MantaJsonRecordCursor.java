@@ -24,8 +24,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
-import com.google.common.io.CountingInputStream;
+import com.joyent.manta.presto.MantaCountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoFileFormatException;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
@@ -39,8 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.net.SocketTimeoutException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static com.facebook.presto.spi.type.DoubleType.DOUBLE;
 import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
@@ -72,42 +73,52 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final List<MantaColumn> columns;
     private Long totalBytes = null;
     private long lines = 0L;
+    private int retries = 0;
     private Long readTimeStartNanos = null;
-
-    private final String objectPath;
-    private final CountingInputStream countingStream;
-    private final MappingIterator<ObjectNode> lineItr;
-    private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
-
     private Map<Integer, JsonNode> row;
+    private MantaCountingInputStream countingStream;
+    private MappingIterator<ObjectNode> lineItr;
+
+    private final Supplier<MantaCountingInputStream> streamRecreator;
+    private final String objectPath;
+    private final ObjectReader streamingReader;
+
+    private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
 
     /**
      * Creates a new instance based on the specified parameters.
      *
+     * @param streamRecreator function used to recreate the underlying stream providing the JSON data
      * @param columns list of columns in table
      * @param objectPath path to object in Manta
      * @param totalBytes total number of bytes in source object
      * @param countingStream input stream that counts the number of bytes processed
      * @param streamingReader streaming json deserialization reader
      */
-    public MantaJsonRecordCursor(final List<MantaColumn> columns,
+    public MantaJsonRecordCursor(final Supplier<MantaCountingInputStream> streamRecreator,
+                                 final List<MantaColumn> columns,
                                  final String objectPath,
                                  final Long totalBytes,
-                                 final CountingInputStream countingStream,
+                                 final MantaCountingInputStream countingStream,
                                  final ObjectReader streamingReader) {
+        this.streamRecreator = streamRecreator;
         this.columns = columns;
         this.objectPath = objectPath;
         this.totalBytes = totalBytes;
+        this.streamingReader = streamingReader;
         this.countingStream = countingStream;
+        this.lineItr = buildLineIteratorFromStream(countingStream);
+    }
 
+    private MappingIterator<ObjectNode> buildLineIteratorFromStream(final MantaCountingInputStream in) {
         try {
-            this.lineItr = streamingReader.readValues(countingStream);
+            return streamingReader.readValues(in);
         } catch (JsonParseException e) {
             String msg = "Can't parse input data as valid JSON";
             MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
             me.setContextValue("objectPath", objectPath);
             me.setContextValue("jsonPayload", e.getRequestPayloadAsString());
-            me.setContextValue("bytePosition", countingStream.getCount());
+            me.setContextValue("bytePosition", in.getCount());
 
             if (e.getProcessor() != null) {
                 final JsonParser parser = e.getProcessor();
@@ -122,18 +133,9 @@ public class MantaJsonRecordCursor implements RecordCursor {
             String msg = "Unable to create a line iterator JSON parser";
             MantaPrestoUncheckedIOException me = new MantaPrestoUncheckedIOException(msg, e);
             me.setContextValue("objectPath", objectPath);
-            me.setContextValue("bytePosition", countingStream.getCount());
+            me.setContextValue("bytePosition", in.getCount());
             throw me;
         }
-    }
-
-    @Override
-    public long getTotalBytes() {
-        if (totalBytes == null) {
-            return -1L;
-        }
-
-        return totalBytes;
     }
 
     @Override
@@ -157,6 +159,17 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     @Override
     public boolean advanceNextPosition() {
+        return advanceNextPosition(-1L);
+    }
+
+    /**
+     * Advances the cursor to the next position.
+     *
+     * @param lineToAdvanceTo if -1 or less, it advances to the next available line
+     *                        otherwise, it advances to the line specified
+     * @return true if a line is available, otherwise false if not available
+     */
+    private boolean advanceNextPosition(final long lineToAdvanceTo) {
         if (readTimeStartNanos == null) {
             readTimeStartNanos = System.nanoTime();
         }
@@ -168,21 +181,63 @@ public class MantaJsonRecordCursor implements RecordCursor {
             return false;
         }
 
-        lines++;
+        // Only increment the line count if we aren't skipping lines
+        if (lineToAdvanceTo < 0) {
+            lines++;
+        }
 
         try {
+            // Skip lines until we hit the specified line
+            for (int i = 0; i < lineToAdvanceTo; i++) {
+                lineItr.next();
+            }
+
             ObjectNode node = lineItr.next();
             row = mapOrdinalToNode(node);
         } catch (RuntimeException e) {
             MantaPrestoRuntimeException me = new MantaPrestoRuntimeException(e);
-            me.setContextValue("objectPath", objectPath);
-            me.addContextValue("line", lines);
+            MantaPrestoExceptionUtils.annotateMantaObjectDetails(countingStream, me);
 
-            try {
-                me.setContextValue("hostname", InetAddress.getLocalHost().getHostName());
-            } catch (UnknownHostException | NullPointerException he) {
-                // Do nothing - just indicate that the hostname can't be known
-                me.setContextValue("hostname", "unknown");
+            me.setContextValue("line", lines);
+            me.setContextValue("lineToAdvanceTo", lineToAdvanceTo);
+            me.setContextValue("retries", retries);
+
+            if (lineItr.getCurrentLocation() != null) {
+                me.addContextValue("jsonIteratorByteOffset",
+                        lineItr.getCurrentLocation().getByteOffset());
+            }
+
+            me.addContextValue("streamBytePosition", countingStream.getCount());
+
+            /* When we encounter a socket read time out, we attempt to open up
+             * a new connection at the position of the current line that
+             * hasn't been successfully read. We do this because there are
+             * spurious network conditions in which we have no proper way of
+             * recovering from without doing a retry.
+             */
+            if (e.getCause() != null
+                    && e.getCause().getClass().equals(SocketTimeoutException.class)
+                    && streamRecreator != null
+                    && lineToAdvanceTo < 0) {
+                LOG.info("Retrying download for object due to socket timeout", me);
+                Closeables.closeQuietly(countingStream);
+                countingStream = streamRecreator.get();
+                lineItr = buildLineIteratorFromStream(countingStream);
+
+                /* We don't allow more than a single retry because if you are
+                 * getting many socket timeouts it is indicative of a failure
+                 * in which we want to error on.
+                 */
+                retries++;
+
+                /* We download the data file again and skip lines until we reach
+                 * the current line. We pass in the current line minus one because
+                 * lines was incremented before the cursor was advanced we did this
+                 * because it allowed us to return the correct position for errors.
+                 * However, it does make it a bit unclear when skipping lines
+                 * as we do below.
+                 */
+                return advanceNextPosition(lines - 1);
             }
 
             throw me;

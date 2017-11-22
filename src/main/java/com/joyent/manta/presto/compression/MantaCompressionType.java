@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.io.Files;
+import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.exceptions.MantaPrestoRuntimeException;
 import org.apache.commons.compress.compressors.CompressorException;
@@ -154,19 +155,34 @@ public enum MantaCompressionType {
      * a decompressing input stream if the source object has an extension
      * associated with a supported compression algorithm.
      *
-     * @param mantaInputStream input stream to wrap
+     * @param mantaObjectInputStream input stream to wrap
      * @return wrapped stream or passed stream
      */
-    public static InputStream wrapMantaStreamIfCompressed(final MantaObjectInputStream mantaInputStream) {
-        requireNonNull(mantaInputStream, "Manta input stream is null");
+    public static InputStream wrapMantaStreamIfCompressed(
+            final MantaObjectInputStream mantaObjectInputStream) {
+        return wrapMantaStreamIfCompressed(mantaObjectInputStream, mantaObjectInputStream);
+    }
 
-        String fileExtension = Files.getFileExtension(mantaInputStream.getPath());
+    /**
+     * Helper method that wraps a passed Manta object input stream object with
+     * a decompressing input stream if the source object has an extension
+     * associated with a supported compression algorithm.
+     *
+     * @param object Manta object to derive path information from
+     * @param inputStream input stream to wrap
+     * @return wrapped stream or passed stream
+     */
+    public static InputStream wrapMantaStreamIfCompressed(final MantaObject object,
+                                                          final InputStream inputStream) {
+        requireNonNull(inputStream, "Manta input stream is null");
+
+        String fileExtension = Files.getFileExtension(object.getPath());
 
         if (isExtensionSupported(fileExtension)) {
             MantaCompressionType compressionType = valueOfExtension(fileExtension);
-            return compressionType.createStream(mantaInputStream);
+            return compressionType.createStream(inputStream);
         } else {
-            return mantaInputStream;
+            return inputStream;
         }
     }
 
