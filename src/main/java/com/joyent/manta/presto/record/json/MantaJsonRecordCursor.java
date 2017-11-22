@@ -139,15 +139,6 @@ public class MantaJsonRecordCursor implements RecordCursor {
     }
 
     @Override
-    public long getTotalBytes() {
-        if (totalBytes == null) {
-            return -1L;
-        }
-
-        return totalBytes;
-    }
-
-    @Override
     public long getCompletedBytes() {
         return countingStream.getCount();
     }

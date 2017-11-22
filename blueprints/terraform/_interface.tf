@@ -1,5 +1,5 @@
 terraform {
-  required_version = "~> 0.10.6"
+  required_version = "~> 0.10.0"
 }
 
 #
@@ -71,7 +71,7 @@ variable "machine_package_zone" {
 }
 
 variable "version_presto" {
-  default     = "0.185"
+  default     = "0.189"
   description = "The version of Presto to install. See https://repo1.maven.org/maven2/com/facebook/presto/presto-server/."
 }
 
