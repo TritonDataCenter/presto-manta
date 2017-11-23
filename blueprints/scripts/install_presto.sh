@@ -46,13 +46,16 @@ function check_prerequisites() {
 #     $1: the name of the distribution.
 function install_dependencies() {
   log "Updating package index..."
+  # Install Azul Zulu JVM repository
+  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 0x219BD9C9
+  apt-add-repository 'deb http://repos.azulsystems.com/ubuntu stable main'
   apt-get -qq -y update
   log "Upgrading existing packages"
-  sudo apt-get -qq -y upgrade
+  apt-get -qq -y upgrade
   log "Installing prerequisites..."
-  sudo apt-get -qq -y install --no-install-recommends \
-    wget uuid openjdk-8-jdk-headless openjdk-8-dbg htop libnss3 dc netcat \
-    unattended-upgrades
+  apt-get -qq -y install --no-install-recommends \
+    wget uuid zulu-8 htop libnss3 dc netcat \
+    unzip unattended-upgrades
 }
 
 # configure_jvm - configures cryptographic extensions for Manta and installs
@@ -60,7 +63,15 @@ function install_dependencies() {
 # Parameters:
 #     None.
 function configure_jvm() {
-  echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/jre" >> /etc/environment
+  export JAVA_HOME=/usr/lib/jvm/zulu-8-amd64/jre
+  echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
+
+  log "Installing Cryptographic extensions"
+
+  wget -q -O /tmp/ZuluJCEPolicies.zip 'https://cdn.azul.com/zcek/bin/ZuluJCEPolicies.zip'
+  echo '8021a28b8cac41b44f1421fd210a0a0822fcaf88d62d2e70a35b2ff628a8675a  /tmp/ZuluJCEPolicies.zip' | sha256sum -c
+  unzip -o /tmp/ZuluJCEPolicies.zip -d $JAVA_HOME/lib/security
+  rm /tmp/ZuluJCEPolicies.zip
 
   log "Adding libnss PKCS11 extensions to the JVM"
 
@@ -74,7 +85,7 @@ EOF
 
   perl -0777 -i.original -pe \
     's/security.provider.1=sun.security.provider.Sun\nsecurity.provider.2=sun.security.rsa.SunRsaSign\nsecurity.provider.3=sun.security.ec.SunEC\nsecurity.provider.4=com.sun.net.ssl.internal.ssl.Provider\nsecurity.provider.5=com.sun.crypto.provider.SunJCE\nsecurity.provider.6=sun.security.jgss.SunProvider\nsecurity.provider.7=com.sun.security.sasl.Provider\nsecurity.provider.8=org.jcp.xml.dsig.internal.dom.XMLDSigRI\nsecurity.provider.9=sun.security.smartcardio.SunPCSC/security.provider.1=sun.security.pkcs11.SunPKCS11 \/etc\/nss.cfg\nsecurity.provider.2=sun.security.provider.Sun\nsecurity.provider.3=sun.security.rsa.SunRsaSign\nsecurity.provider.4=sun.security.ec.SunEC\nsecurity.provider.5=com.sun.net.ssl.internal.ssl.Provider\nsecurity.provider.6=com.sun.crypto.provider.SunJCE\nsecurity.provider.7=sun.security.jgss.SunProvider\nsecurity.provider.8=com.sun.security.sasl.Provider\nsecurity.provider.9=org.jcp.xml.dsig.internal.dom.XMLDSigRI\nsecurity.provider.10=sun.security.smartcardio.SunPCSC/igs' \
-    /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/security/java.security
+    $JAVA_HOME/lib/security/java.security
 
   log "Add CPU count spoofer library"
   mkdir -p /usr/local/numcpus
