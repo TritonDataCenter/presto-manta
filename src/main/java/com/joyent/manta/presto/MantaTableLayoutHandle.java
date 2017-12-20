@@ -7,13 +7,17 @@
  */
 package com.joyent.manta.presto;
 
+import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
+import com.facebook.presto.spi.predicate.TupleDomain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * {@link ConnectorTableLayoutHandle} implementation that represents a single
@@ -23,21 +27,47 @@ import java.util.Objects;
  */
 public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
     private final MantaSchemaTableName tableName;
+    private final TupleDomain<ColumnHandle> predicate;
+    private final Optional<Set<ColumnHandle>> desiredColumns;
 
     /**
      * Creates a new instance based on the specified parameters.
      *
      * @param tableName table name definition object
      */
-    @JsonCreator
     public MantaTableLayoutHandle(
             @JsonProperty("tableName") final MantaSchemaTableName tableName) {
+        this(tableName, TupleDomain.all(), Optional.empty());
+    }
+
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param tableName table name definition object
+     * @param predicate predicate indication the partitioning mode
+     * @param desiredColumns an optional set of the columns desired in the query
+     */
+    @JsonCreator
+    public MantaTableLayoutHandle(final MantaSchemaTableName tableName,
+                                  final TupleDomain<ColumnHandle> predicate,
+                                  final Optional<Set<ColumnHandle>> desiredColumns) {
         this.tableName = tableName;
+        this.predicate = predicate;
+        this.desiredColumns = desiredColumns;
     }
 
     @JsonProperty
     public MantaSchemaTableName getTableName() {
         return tableName;
+    }
+
+    public TupleDomain<ColumnHandle> getPredicate() {
+        return predicate;
+    }
+
+    @JsonProperty
+    public Optional<Set<ColumnHandle>> getDesiredColumns() {
+        return desiredColumns;
     }
 
     @Override
@@ -51,7 +81,9 @@ public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
 
         final MantaTableLayoutHandle that = (MantaTableLayoutHandle) o;
 
-        return Objects.equals(tableName, that.tableName);
+        return Objects.equals(tableName, that.tableName)
+                && Objects.equals(predicate, that.predicate)
+                && Objects.equals(desiredColumns, that.desiredColumns);
     }
 
     @Override
@@ -63,6 +95,8 @@ public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
     public String toString() {
         return new ToStringBuilder(this)
                 .append("tableName", tableName)
+                .append("constraint", predicate)
+                .append("desiredColumns", desiredColumns)
                 .toString();
     }
 }

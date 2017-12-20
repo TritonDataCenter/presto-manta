@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto.column;
 
+import com.facebook.presto.spi.ConnectorSession;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 
@@ -24,9 +25,11 @@ public interface ColumnLister {
      *
      * @param tableName table name object with schema specified
      * @param table logical table definition
+     * @param session connection for this specific query
      *
      * @return list of columns for table
      */
     List<MantaColumn> listColumns(MantaSchemaTableName tableName,
-                                  MantaLogicalTable table);
+                                  MantaLogicalTable table,
+                                  ConnectorSession session);
 }

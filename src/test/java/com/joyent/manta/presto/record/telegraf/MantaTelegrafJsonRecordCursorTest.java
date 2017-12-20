@@ -7,7 +7,9 @@
  */
 package com.joyent.manta.presto.record.telegraf;
 
+import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.testing.TestingConnectorSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
@@ -40,7 +43,8 @@ public class MantaTelegrafJsonRecordCursorTest {
     @SuppressWarnings("Duplicates")
     private void canParseTelegrafJsonSampleRecordsWithoutAnError(final String testFile) throws IOException {
         final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        List<MantaColumn> columns = new MantaTelegrafColumnLister().listColumns(null, null);
+        final ConnectorSession session = new TestingConnectorSession(Collections.emptyList());
+        List<MantaColumn> columns = new MantaTelegrafColumnLister().listColumns(null, null, session);
 
         final long totalBytes = 37782293;
 

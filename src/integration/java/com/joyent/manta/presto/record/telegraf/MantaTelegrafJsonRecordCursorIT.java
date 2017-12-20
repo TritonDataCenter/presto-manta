@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
@@ -59,7 +60,7 @@ public class MantaTelegrafJsonRecordCursorIT {
     private MantaClient mantaClient;
     private MantaMetadata metadata;
     private String testPathPrefix;
-    private ConnectorSession session;
+    private Supplier<ConnectorSession> sessionSupplier;
 
     @BeforeClass
     public void before() throws IOException {
@@ -67,7 +68,7 @@ public class MantaTelegrafJsonRecordCursorIT {
         injector = setup.injector;
         mantaClient = setup.mantaClient;
         metadata = setup.instance;
-        session = setup.session;
+        sessionSupplier = setup.sessionSupplier;
         testPathPrefix = setup.testPathPrefix;
     }
 
@@ -89,6 +90,8 @@ public class MantaTelegrafJsonRecordCursorIT {
 
     @SuppressWarnings("unchecked")
     public void canParseMapValues() throws IOException {
+        final ConnectorSession session = sessionSupplier.get();
+
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         final long timestampSeconds = 1496275200;
         node.put("timestamp", timestampSeconds);
@@ -130,10 +133,11 @@ public class MantaTelegrafJsonRecordCursorIT {
             return null;
         };
 
-        validateSingleRow(node, assertion);
+        validateSingleRow(node, session, assertion);
     }
 
-    private void validateSingleRow(final ObjectNode node, Function<Block[], Void> assertionBlock)
+    private void validateSingleRow(final ObjectNode node, final ConnectorSession session,
+                                   final Function<Block[], Void> assertionBlock)
             throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         MantaDataFileType dataFileType = MantaDataFileType.TELEGRAF_NDJSON;

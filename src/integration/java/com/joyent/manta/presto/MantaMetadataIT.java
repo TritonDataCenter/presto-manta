@@ -21,6 +21,7 @@ import org.unitils.reflectionassert.ReflectionAssert;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
 
@@ -29,14 +30,14 @@ public class MantaMetadataIT {
     private MantaClient mantaClient;
     private MantaMetadata instance;
     private String testPathPrefix;
-    private ConnectorSession session;
+    private Supplier<ConnectorSession> sessionSupplier;
 
     @BeforeClass
     public void before() throws IOException {
         MantaPrestoIntegrationTestUtils.IntegrationSetup setup = setupConfiguration();
         mantaClient = setup.mantaClient;
         instance = setup.instance;
-        session = setup.session;
+        sessionSupplier = setup.sessionSupplier;
         testPathPrefix = setup.testPathPrefix;
     }
 
@@ -57,7 +58,7 @@ public class MantaMetadataIT {
     }
 
     public void canListSchemaNames() {
-
+        final ConnectorSession session = sessionSupplier.get();
         List<String> schemas = instance.listSchemaNames(session);
         List<String> expected = ImmutableList.of("default");
 
@@ -67,6 +68,7 @@ public class MantaMetadataIT {
     }
 
     public void willErrorNicelyIfSchemaIsNotFound() {
+        final ConnectorSession session = sessionSupplier.get();
         final String badSchema = "this-schema-is-not-found";
 
         boolean thrown = false;

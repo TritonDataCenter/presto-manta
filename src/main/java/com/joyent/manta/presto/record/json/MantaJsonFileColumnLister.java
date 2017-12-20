@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto.record.json;
 
+import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DateType;
@@ -19,6 +20,8 @@ import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
@@ -38,6 +41,8 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 
 /**
  * {@link com.joyent.manta.presto.column.ColumnLister} implementation that
@@ -47,6 +52,9 @@ import java.util.Map;
  * @since 1.0.0
  */
 public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
+    private static final int CACHE_CONCURRENCY_LEVEL = 20;
+    private static final int MAX_CACHE_SIZE = 2000;
+
     private static final String[] DATE_KEYWORDS = new String[] {
             "date", "timestamp"
     };
@@ -66,6 +74,56 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                     .build();
 
     private final ObjectMapper jsonDataFileMapper;
+
+    /**
+     * Cache containing the column list per query, so that when we look up
+     * columns, we only have to do it once per query run.
+     */
+    private final Cache<String, List<MantaColumn>> columnCache =
+            CacheBuilder.newBuilder()
+                    .concurrencyLevel(CACHE_CONCURRENCY_LEVEL)
+                    .maximumSize(MAX_CACHE_SIZE)
+                    .build();
+
+    /**
+     * {@link Callable} implementation that loads the columns from the first
+     * line of JSON from the first file found.
+     */
+    private final class ColumnListLoader implements Callable<List<MantaColumn>> {
+        private final MantaSchemaTableName tableName;
+        private final MantaLogicalTable table;
+
+        private ColumnListLoader(final MantaSchemaTableName tableName,
+                                 final MantaLogicalTable table) {
+            this.tableName = tableName;
+            this.table = table;
+        }
+
+        @Override
+        public List<MantaColumn> call() {
+            final MantaObject first = firstObjectForTable(tableName, table);
+            final String objectPath = first.getPath();
+            final String firstLine = readFirstLine(objectPath);
+
+            final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
+            final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
+            final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+
+            while (itr.hasNext()) {
+                final Map.Entry<String, JsonNode> next = itr.next();
+                String key = next.getKey();
+                JsonNode val = next.getValue();
+
+                MantaColumn column = buildColumn(key, val);
+
+                if (column != null) {
+                    columns.add(column);
+                }
+            }
+
+            return columns.build();
+        }
+    }
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -88,28 +146,20 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
 
     @Override
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
-                                         final MantaLogicalTable table) {
-        final MantaObject first = firstObjectForTable(tableName, table);
-        final String objectPath = first.getPath();
-        final String firstLine = readFirstLine(objectPath);
+                                         final MantaLogicalTable table,
+                                         final ConnectorSession session) {
+        final ColumnListLoader loader = new ColumnListLoader(tableName, table);
 
-        final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
-        final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
-        final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+        try {
+            return columnCache.get(session.getQueryId(), loader);
+        } catch (ExecutionException e) {
+            String msg = "Error loading column listing from JSON source";
+            MantaPrestoRuntimeException mpre = new MantaPrestoRuntimeException(msg);
+            mpre.setContextValue("tableName", tableName.getTableName());
+            mpre.setContextValue("schema", tableName.getSchemaName());
 
-        while (itr.hasNext()) {
-            final Map.Entry<String, JsonNode> next = itr.next();
-            String key = next.getKey();
-            JsonNode val = next.getValue();
-
-            MantaColumn column = buildColumn(key, val);
-
-            if (column != null) {
-                columns.add(column);
-            }
+            throw mpre;
         }
-
-        return columns.build();
     }
 
     private ObjectNode readObjectNode(final String firstLine, final String objectPath) {

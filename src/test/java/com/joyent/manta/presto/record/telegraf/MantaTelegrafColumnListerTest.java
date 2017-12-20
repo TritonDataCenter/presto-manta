@@ -7,17 +7,21 @@
  */
 package com.joyent.manta.presto.record.telegraf;
 
+import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.testing.TestingConnectorSession;
 import com.joyent.manta.presto.column.MantaColumn;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
 import java.util.List;
 
 @Test
 public class MantaTelegrafColumnListerTest {
     public void hasExpectedColumns() {
-        MantaTelegrafColumnLister columnLister = new MantaTelegrafColumnLister();
-        List<MantaColumn> columns = columnLister.listColumns(null, null);
+        final MantaTelegrafColumnLister columnLister = new MantaTelegrafColumnLister();
+        final ConnectorSession session = new TestingConnectorSession(Collections.emptyList());
+        List<MantaColumn> columns = columnLister.listColumns(null, null, session);
 
         Assert.assertEquals(columns.get(0).getName(), "timestamp");
         Assert.assertEquals(columns.get(1).getName(), "tags");

@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto.column;
 
+import com.facebook.presto.spi.ConnectorSession;
 import com.joyent.manta.presto.MantaConnectorId;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
@@ -50,7 +51,8 @@ public class RedirectingColumnLister implements ColumnLister {
 
     @Override
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
-                                         final MantaLogicalTable table) {
+                                         final MantaLogicalTable table,
+                                         final ConnectorSession session) {
         final MantaDataFileType type = table.getDataFileType();
 
         final ColumnLister lister;
@@ -70,6 +72,6 @@ public class RedirectingColumnLister implements ColumnLister {
                 throw me;
         }
 
-        return lister.listColumns(tableName, table);
+        return lister.listColumns(tableName, table, session);
     }
 }

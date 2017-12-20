@@ -19,6 +19,7 @@ import com.facebook.presto.spi.Constraint;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
+import com.facebook.presto.spi.predicate.TupleDomain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.joyent.manta.client.MantaClient;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -127,14 +129,28 @@ public class MantaMetadata implements ConnectorMetadata {
             final ConnectorTableHandle table,
             final Constraint<ColumnHandle> constraint,
             final Optional<Set<ColumnHandle>> desiredColumns) {
+
         if (!table.getClass().equals(MantaSchemaTableName.class)) {
             throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
                     table.getClass());
         }
 
-        MantaSchemaTableName tableName = (MantaSchemaTableName)table;
+        TupleDomain<ColumnHandle> predicate = TupleDomain.all();
 
-        ConnectorTableLayout layout = new ConnectorTableLayout(new MantaTableLayoutHandle(tableName));
+        MantaSchemaTableName tableName = (MantaSchemaTableName)table;
+        MantaTableLayoutHandle layoutHandle = new MantaTableLayoutHandle(tableName,
+                predicate, desiredColumns);
+        List<ColumnHandle> columnHandles = listColumnHandles(tableName, session);
+
+        ConnectorTableLayout layout = new ConnectorTableLayout(
+                layoutHandle,
+                Optional.of(columnHandles),
+                predicate,
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Collections.emptyList());
+
         return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
     }
 
@@ -163,7 +179,7 @@ public class MantaMetadata implements ConnectorMetadata {
         MantaSchemaTableName tableName = (MantaSchemaTableName)tableHandle;
         final MantaLogicalTable table = tableName.getTable();
         final List<? extends ColumnMetadata> columns = columnLister.listColumns(
-                tableName, table);
+                tableName, table, session);
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;
@@ -174,14 +190,7 @@ public class MantaMetadata implements ConnectorMetadata {
     @Override
     public Map<String, ColumnHandle> getColumnHandles(final ConnectorSession session,
                                                       final ConnectorTableHandle handle) {
-        if (!handle.getClass().equals(MantaSchemaTableName.class)) {
-            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
-                    handle.getClass());
-        }
-
-        final MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
-        final MantaLogicalTable table = tableName.getTable();
-        final List<MantaColumn> columns = columnLister.listColumns(tableName, table);
+        final List<MantaColumn> columns = listColumns(handle, session);
 
         ImmutableMap.Builder<String, ColumnHandle> builder = new ImmutableMap.Builder<>();
 
@@ -206,7 +215,7 @@ public class MantaMetadata implements ConnectorMetadata {
         MantaLogicalTable table = tableProvider.getTable(schemaName, prefix.getTableName());
         MantaSchemaTableName tableName = new MantaSchemaTableName(schemaName, table);
         final List<? extends ColumnMetadata> columns = columnLister.listColumns(
-                tableName, table);
+                tableName, table, session);
 
         @SuppressWarnings("unchecked")
         List<ColumnMetadata> columnMetadata = (List<ColumnMetadata>)columns;
@@ -227,5 +236,26 @@ public class MantaMetadata implements ConnectorMetadata {
                 .append("connectorId", connectorId)
                 .append("mantaClient", mantaClient)
                 .toString();
+    }
+
+    private List<MantaColumn> listColumns(final ConnectorTableHandle handle,
+                                          final ConnectorSession session) {
+        if (!handle.getClass().equals(MantaSchemaTableName.class)) {
+            throw new MantaPrestoUnexpectedClass(MantaSchemaTableName.class,
+                    handle.getClass());
+        }
+
+        final MantaSchemaTableName tableName = (MantaSchemaTableName)handle;
+        final MantaLogicalTable table = tableName.getTable();
+        return columnLister.listColumns(tableName, table, session);
+    }
+
+    private List<ColumnHandle> listColumnHandles(final ConnectorTableHandle handle,
+                                                 final ConnectorSession session) {
+        List<? extends ColumnHandle> extendedHandles = listColumns(handle, session);
+        @SuppressWarnings("unchecked")
+        List<ColumnHandle> handles = (List<ColumnHandle>)extendedHandles;
+
+        return handles;
     }
 }

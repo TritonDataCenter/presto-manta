@@ -8,6 +8,7 @@
 package com.joyent.manta.presto.test;
 
 import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.testing.TestingConnectorSession;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 import com.joyent.manta.client.MantaClient;
@@ -15,10 +16,10 @@ import com.joyent.manta.presto.MantaMetadata;
 import com.joyent.manta.presto.MantaPrestoTestUtils;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
-
-import static org.mockito.Mockito.mock;
+import java.util.function.Supplier;
 
 public class MantaPrestoIntegrationTestUtils {
     public static class IntegrationSetup {
@@ -26,18 +27,18 @@ public class MantaPrestoIntegrationTestUtils {
         public final MantaClient mantaClient;
         public final MantaMetadata instance;
         public final String testPathPrefix;
-        public final ConnectorSession session;
+        public final Supplier<ConnectorSession> sessionSupplier;
 
         public IntegrationSetup(final Injector injector,
                                 final MantaClient mantaClient,
                                 final MantaMetadata instance,
                                 final String testPathPrefix,
-                                final ConnectorSession session) {
+                                final Supplier<ConnectorSession> sessionSupplier) {
             this.injector = injector;
             this.mantaClient = mantaClient;
             this.instance = instance;
             this.testPathPrefix = testPathPrefix;
-            this.session = session;
+            this.sessionSupplier = sessionSupplier;
         }
     }
 
@@ -51,12 +52,13 @@ public class MantaPrestoIntegrationTestUtils {
 
         MantaClient mantaClient = injector.getInstance(MantaClient.class);
         MantaMetadata instance = injector.getInstance(MantaMetadata.class);
-        ConnectorSession session = mock(ConnectorSession.class);
+        Supplier<ConnectorSession> sessionSupplier = () ->
+                new TestingConnectorSession(Collections.emptyList());
 
         String testPathPrefix = String.format("%s/stor/java-manta-integration-tests/%s/",
                 mantaClient.getContext().getMantaHomeDirectory(), randomDir);
         mantaClient.putDirectory(testPathPrefix, true);
 
-        return new IntegrationSetup(injector, mantaClient, instance, testPathPrefix, session);
+        return new IntegrationSetup(injector, mantaClient, instance, testPathPrefix, sessionSupplier);
     }
 }

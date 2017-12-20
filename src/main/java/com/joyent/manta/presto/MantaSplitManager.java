@@ -56,9 +56,9 @@ public class MantaSplitManager implements ConnectorSplitManager {
                     handle.getClass());
         }
 
-        MantaTableLayoutHandle layoutHandle = (MantaTableLayoutHandle)layout;
-        MantaSchemaTableName tableName = layoutHandle.getTableName();
-        MantaLogicalTable table = tableName.getTable();
+        final MantaTableLayoutHandle layoutHandle = (MantaTableLayoutHandle)layout;
+        final MantaSchemaTableName tableName = layoutHandle.getTableName();
+        final MantaLogicalTable table = tableName.getTable();
 
         Stream<MantaObject> objectStream = mantaClient.find(table.getRootPath(),
                 table.directoryFilter())
@@ -66,7 +66,11 @@ public class MantaSplitManager implements ConnectorSplitManager {
                 .filter(obj -> !obj.isDirectory())
                 .filter(obj -> !obj.getPath().endsWith(TABLE_DEFINITION_FILENAME));
 
-        return new MantaStreamingSplitSource(connectorId, tableName.getSchemaName(),
-                tableName.getTableName(), table.getDataFileType(), objectStream);
+        return new MantaStreamingSplitSource(
+                connectorId,
+                tableName.getSchemaName(),
+                tableName.getTableName(),
+                table.getDataFileType(),
+                objectStream);
     }
 }

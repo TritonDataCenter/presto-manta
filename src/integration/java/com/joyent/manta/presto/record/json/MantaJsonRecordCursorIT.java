@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
@@ -60,7 +61,7 @@ public class MantaJsonRecordCursorIT {
     private MantaClient mantaClient;
     private MantaMetadata metadata;
     private String testPathPrefix;
-    private ConnectorSession session;
+    private Supplier<ConnectorSession> sessionSupplier;
 
     @BeforeClass
     public void before() throws IOException {
@@ -68,7 +69,7 @@ public class MantaJsonRecordCursorIT {
         injector = setup.injector;
         mantaClient = setup.mantaClient;
         metadata = setup.instance;
-        session = setup.session;
+        sessionSupplier = setup.sessionSupplier;
         testPathPrefix = setup.testPathPrefix;
     }
 
@@ -89,6 +90,8 @@ public class MantaJsonRecordCursorIT {
     }
 
     public void canParseDateValues() throws IOException {
+        final ConnectorSession session = sessionSupplier.get();
+
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         node.put("date-field0", "07-01-2014");
         node.put("date-field1", "1980-08-10");
@@ -118,10 +121,12 @@ public class MantaJsonRecordCursorIT {
             return null;
         };
 
-        validateSingleRow(node, assertion);
+        validateSingleRow(node, session, assertion);
     }
 
     public void canParseStringValues() throws IOException {
+        final ConnectorSession session = sessionSupplier.get();
+
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         node.put("field0", "This is a string"); // String
         node.put("field1", "これもストリング"); // Unicode String
@@ -136,10 +141,12 @@ public class MantaJsonRecordCursorIT {
             return null;
         };
 
-        validateSingleRow(node, assertion);
+        validateSingleRow(node, session, assertion);
     }
 
     public void canParseNumericValues() throws IOException {
+        final ConnectorSession session = sessionSupplier.get();
+
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         node.put("field0", 1); // Integer
         node.put("field1", Long.MIN_VALUE); // Long
@@ -168,11 +175,13 @@ public class MantaJsonRecordCursorIT {
             return null;
         };
 
-        validateSingleRow(node, assertion);
+        validateSingleRow(node, session, assertion);
     }
 
-    private void validateSingleRow(final ObjectNode node, Function<Block[], Void> assertionBlock)
+    private void validateSingleRow(final ObjectNode node, ConnectorSession session,
+                                   Function<Block[], Void> assertionBlock)
             throws IOException {
+
         ObjectMapper mapper = new ObjectMapper();
         MantaDataFileType dataFileType = MantaDataFileType.NDJSON;
         MantaLogicalTable table = new MantaLogicalTable("singlerow",

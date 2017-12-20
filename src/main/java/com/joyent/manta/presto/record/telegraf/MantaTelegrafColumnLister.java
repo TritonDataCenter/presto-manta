@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto.record.telegraf;
 
+import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.VarcharType;
 import com.google.common.collect.ImmutableList;
@@ -45,7 +46,8 @@ public class MantaTelegrafColumnLister implements ColumnLister {
 
     @Override
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
-                                         final MantaLogicalTable table) {
+                                         final MantaLogicalTable table,
+                                         final ConnectorSession session) {
         return COLUMNS;
     }
 }
