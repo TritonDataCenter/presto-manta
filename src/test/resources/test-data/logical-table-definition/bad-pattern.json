@@ -1,0 +1,6 @@
+{
+  "name": "logical-table-1",
+  "rootPath": "/user/stor/json-examples",
+  "dataFileType": "json",
+  "directoryFilterRegex": "**dir2\/.*\\.json$"
+}
