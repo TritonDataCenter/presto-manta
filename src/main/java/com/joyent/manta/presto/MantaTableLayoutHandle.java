@@ -35,8 +35,7 @@ public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
      *
      * @param tableName table name definition object
      */
-    public MantaTableLayoutHandle(
-            @JsonProperty("tableName") final MantaSchemaTableName tableName) {
+    public MantaTableLayoutHandle(final MantaSchemaTableName tableName) {
         this(tableName, TupleDomain.all(), Optional.empty());
     }
 
@@ -48,9 +47,9 @@ public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
      * @param desiredColumns an optional set of the columns desired in the query
      */
     @JsonCreator
-    public MantaTableLayoutHandle(final MantaSchemaTableName tableName,
-                                  final TupleDomain<ColumnHandle> predicate,
-                                  final Optional<Set<ColumnHandle>> desiredColumns) {
+    public MantaTableLayoutHandle(@JsonProperty("tableName") final MantaSchemaTableName tableName,
+                                  @JsonProperty("predicate") final TupleDomain<ColumnHandle> predicate,
+                                  @JsonProperty("desiredColumns") final Optional<Set<ColumnHandle>> desiredColumns) {
         this.tableName = tableName;
         this.predicate = predicate;
         this.desiredColumns = desiredColumns;

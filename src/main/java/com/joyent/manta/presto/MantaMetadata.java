@@ -135,8 +135,7 @@ public class MantaMetadata implements ConnectorMetadata {
                     table.getClass());
         }
 
-        TupleDomain<ColumnHandle> predicate = TupleDomain.all();
-
+        TupleDomain<ColumnHandle> predicate = constraint.getSummary();
         MantaSchemaTableName tableName = (MantaSchemaTableName)table;
         MantaTableLayoutHandle layoutHandle = new MantaTableLayoutHandle(tableName,
                 predicate, desiredColumns);
