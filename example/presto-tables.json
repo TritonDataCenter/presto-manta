@@ -8,7 +8,7 @@
     "name":"logical-table-2",
     "rootPath":"~~/stor/analytics",
     "dataFileType":"NDJSON",
-    "partition": {
+    "partitioning": {
       "directoryFilterRegex":"",
       "filterRegex":""
     }
@@ -17,7 +17,7 @@
     "name":"logical-table-3",
     "rootPath":"~~/stor/analytics_compressed",
     "dataFileType":"NDJSON",
-    "partition": {
+    "partitioning": {
       "filterRegex": "^/user/stor/json-examples/(.+)-(.+)-(.+)-.+\\.json$",
       "partitions": [
         "year",
