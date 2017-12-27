@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
@@ -22,6 +23,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -83,14 +86,58 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg, e);
         }
 
-        if (objectNode.get("partition"))
+        final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
+                readPartitionDefinition(objectNode, p);
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
-                    directoryFilterRegex, filterRegex);
+                    partitionDefinition);
         } catch (Exception e) {
             throw new JsonMappingException(p, "Unable to create new "
                     + "MantaLogicalTable instance", e);
+        }
+    }
+
+    /**
+     * Reads the partition section of a table logical definition object.
+     */
+    private static Optional<MantaLogicalTablePartitionDefinition> readPartitionDefinition(
+            final ObjectNode objectNode, final JsonParser p) throws JsonProcessingException {
+        if (objectNode.get("partitioning") != null && !objectNode.get("partitioning").isNull()) {
+            if (!objectNode.get("partitioning").isObject()) {
+                throw new JsonMappingException(p, "Expected partition value to "
+                        + "be a JSON object");
+            }
+
+            @SuppressWarnings("unchecked")
+            final ObjectNode partitioning = (ObjectNode)objectNode.get("partitioning");
+
+            final Pattern directoryFilterRegex = readPattern(
+                    partitioning.get("directoryFilterRegex"), "directoryFilterRegex",
+                    p);
+
+            final Pattern filterRegex = readPattern(partitioning.get("filterRegex"),
+                    "filterRegex", p);
+
+            final LinkedHashSet<String> directoryFilterPartitions =
+                    readOrderedSet(partitioning.get("directoryPartitions"),
+                            "directoryPartitions", p);
+            final LinkedHashSet<String> filterPartitions =
+                    readOrderedSet(partitioning.get("partitions"), "segments", p);
+
+            /* If all values are empty/default, then it makes sense to return
+             * back an empty Optional.empty() because functionally there is
+             * no partition specified. */
+            if (directoryFilterRegex == null && filterRegex == null
+                    && directoryFilterPartitions.isEmpty() && filterPartitions.isEmpty()) {
+                return Optional.empty();
+            } else {
+                return Optional.of(new MantaLogicalTablePartitionDefinition(
+                        directoryFilterRegex, filterRegex, directoryFilterPartitions,
+                        filterPartitions));
+            }
+        } else {
+            return Optional.empty();
         }
     }
 
@@ -116,4 +163,73 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return node.asText();
     }
 
+    /**
+     * Attempts to read a regex pattern as a String and then compile it. If it
+     * can't it errors.
+     */
+    private static Pattern readPattern(final JsonNode node, final String fieldName,
+                                       final JsonParser p) throws JsonProcessingException {
+        final Pattern regex;
+
+        if (node == null || node.isNull()) {
+            regex = null;
+        } else if (node.isTextual()) {
+            String filterRegexValue = node.asText();
+
+            if (StringUtils.isBlank(filterRegexValue)) {
+                regex = null;
+            } else {
+                try {
+                    regex = Pattern.compile(filterRegexValue);
+                } catch (IllegalArgumentException e) {
+                    String msg = String.format("Bad regular expressed "
+                            + "passed as filter [%s]", fieldName);
+                    throw new JsonMappingException(p, msg, e);
+                }
+            }
+        } else {
+            String msg = String.format("Expected JSON source to have a "
+                    + "%s defined as a textual element when parsing for "
+                    + "a MantaLogicalTable object", fieldName);
+            throw new JsonMappingException(p, msg);
+        }
+
+        return regex;
+    }
+
+    /**
+     * Attempts to read a string array from JSON as a {@link LinkedHashSet}.
+     */
+    private static LinkedHashSet<String> readOrderedSet(final JsonNode node,
+            final String fieldName, final JsonParser p) throws JsonProcessingException {
+        final LinkedHashSet<String> set = new LinkedHashSet<>();
+
+        if (node == null || node.isNull()) {
+            return set;
+        }
+
+        if (!node.isArray()) {
+            String msg = String.format("Expected JSON source to have a "
+                    + "%s defined as an array element when parsing for "
+                    + "a MantaLogicalTable object", fieldName);
+            throw new JsonMappingException(p, msg);
+        }
+
+        @SuppressWarnings("unchecked")
+        final ArrayNode array = (ArrayNode)node;
+
+        for (JsonNode value : array) {
+            if (!value.isTextual()) {
+                String msg = String.format("Expected JSON source to have a "
+                        + "%s defined as an array element with only textual "
+                        + "values when parsing for "
+                        + "a MantaLogicalTable object", fieldName);
+                throw new JsonMappingException(p, msg);
+            }
+
+            set.add(value.textValue());
+        }
+
+        return set;
+    }
 }

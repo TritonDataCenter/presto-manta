@@ -9,6 +9,8 @@ package com.joyent.manta.presto.tables;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
@@ -98,11 +100,15 @@ public class MantaLogicalTablePartitionDefinition {
     }
 
     @JsonProperty
+    @JsonDeserialize(as=LinkedHashSet.class)
+    @JsonSerialize(as=LinkedHashSet.class)
     public LinkedHashSet<String> getDirectoryFilterPartitions() {
         return directoryFilterPartitions;
     }
 
     @JsonProperty
+    @JsonDeserialize(as=LinkedHashSet.class)
+    @JsonSerialize(as=LinkedHashSet.class)
     public LinkedHashSet<String> getFilterPartitions() {
         return filterPartitions;
     }

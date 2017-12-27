@@ -2,22 +2,28 @@
   {
     "name":"logical-table-1",
     "rootPath":"~~/stor/json-examples",
-    "dataFileType":"NDJSON",
-    "directoryFilterRegex":"",
-    "filterRegex":""
+    "dataFileType":"NDJSON"
   },
   {
     "name":"logical-table-2",
     "rootPath":"~~/stor/analytics",
     "dataFileType":"NDJSON",
-    "directoryFilterRegex":"",
-    "filterRegex":""
+    "partition": {
+      "directoryFilterRegex":"",
+      "filterRegex":""
+    }
   },
   {
     "name":"logical-table-3",
     "rootPath":"~~/stor/analytics_compressed",
     "dataFileType":"NDJSON",
-    "directoryFilterRegex":"",
-    "filterRegex":""
+    "partition": {
+      "filterRegex": "^/user/stor/json-examples/(.+)-(.+)-(.+)-.+\\.json$",
+      "partitions": [
+        "year",
+        "month",
+        "day"
+      ]
+    }
   }
 ]
