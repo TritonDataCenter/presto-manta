@@ -83,12 +83,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg, e);
         }
 
-        final Pattern directoryFilterRegex = readPattern(
-                objectNode.get("directoryFilterRegex"), "directoryFilterRegex",
-                p);
-
-        final Pattern filterRegex = readPattern(objectNode.get("filterRegex"),
-                "filterRegex", p);
+        if (objectNode.get("partition"))
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
@@ -121,37 +116,4 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return node.asText();
     }
 
-    /**
-     * Attempts to read a regex pattern as a String and then compile it. If it
-     * can't it errors.
-     */
-    private static Pattern readPattern(final JsonNode node, final String fieldName,
-                                       final JsonParser p) throws JsonProcessingException {
-        final Pattern regex;
-
-        if (node == null || node.isNull()) {
-            regex = null;
-        } else if (node.isTextual()) {
-            String filterRegexValue = node.asText();
-
-            if (StringUtils.isBlank(filterRegexValue)) {
-                regex = null;
-            } else {
-                try {
-                    regex = Pattern.compile(filterRegexValue);
-                } catch (IllegalArgumentException e) {
-                    String msg = String.format("Bad regular expressed "
-                            + "passed as filter [%s]", fieldName);
-                    throw new JsonMappingException(p, msg, e);
-                }
-            }
-        } else {
-            String msg = String.format("Expected JSON source to have a "
-                    + "%s defined as a textual element when parsing for "
-                    + "a MantaLogicalTable object", fieldName);
-            throw new JsonMappingException(p, msg);
-        }
-
-        return regex;
-    }
 }
