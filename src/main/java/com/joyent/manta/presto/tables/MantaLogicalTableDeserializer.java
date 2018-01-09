@@ -89,9 +89,11 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
 
+        final Optional<JsonNode> columnConfig = readColumnsArray(objectNode.get("columns"), p);
+
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
-                    partitionDefinition);
+                    partitionDefinition, columnConfig);
         } catch (Exception e) {
             throw new JsonMappingException(p, "Unable to create new "
                     + "MantaLogicalTable instance", e);
@@ -197,6 +199,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return regex;
     }
 
+
     /**
      * Attempts to read a string array from JSON as a {@link LinkedHashSet}.
      */
@@ -215,8 +218,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-        @SuppressWarnings("unchecked")
-        final ArrayNode array = (ArrayNode)node;
+        @SuppressWarnings("unchecked") final ArrayNode array = (ArrayNode) node;
 
         for (JsonNode value : array) {
             if (!value.isTextual()) {
@@ -231,5 +233,40 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         }
 
         return set;
+    }
+
+    /**
+     * Reads & Verifies column JsonNode format, returns null if columnConfig is not an arrays.
+     */
+
+    private static Optional<JsonNode> readColumnsArray(final JsonNode columnConfig,
+                                             final JsonParser p) throws JsonProcessingException {
+        final Optional<JsonNode> retnode;
+        /**
+         *  If this 'columns' field is not present in the .json, or empty just return null
+         *  We'll detect this and use the first line of the .json to define the columns instead.
+         */
+        if ((columnConfig != null) && columnConfig.isArray()) {
+            // Check whether each array element has the required columns
+            for (JsonNode element : columnConfig) {
+                if (element.isObject()) {
+                    if (!(element.has("column")
+                            && element.has("display_name") && element.has("type"))) {
+                        String msg = String.format("Expected JSON columns Array to have elements "
+                                + "column, display_name, and type defined for each object in array.");
+                        throw new JsonMappingException(p, msg);
+                    }
+                } else {
+                    String msg = String.format("Expected JSON columns Array element"
+                            + "to be a json object.");
+                    throw new JsonMappingException(p, msg);
+                }
+            }
+            retnode = Optional.of(columnConfig);
+        } else {
+            retnode = Optional.empty();
+        }
+        return retnode;
+
     }
 }

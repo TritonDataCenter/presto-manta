@@ -242,7 +242,7 @@
                 </dependencies>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
-                    <consoleOutput>true</consoleOutput>
+                    <consoleOutput>false</consoleOutput>
                     <skip>${checkstyle.skip}</skip>
                     <suppressionsLocation>suppressions.xml</suppressionsLocation>
                     <violationSeverity>warning</violationSeverity>

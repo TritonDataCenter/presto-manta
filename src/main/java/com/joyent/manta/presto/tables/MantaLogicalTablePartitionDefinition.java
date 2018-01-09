@@ -46,7 +46,9 @@ public class MantaLogicalTablePartitionDefinition {
      */
     private final LinkedHashSet<String> filterPartitions =
             new LinkedHashSet<>();
-
+    /**
+     * MantaLogicalTablePartitionDefinition
+     */
     @JsonCreator
     public MantaLogicalTablePartitionDefinition(
             @JsonProperty("directoryFilterRegex") final String directoryFilterRegexString,

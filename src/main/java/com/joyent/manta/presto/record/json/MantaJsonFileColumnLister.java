@@ -16,6 +16,7 @@ import com.facebook.presto.spi.type.DoubleType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.VarbinaryType;
 import com.facebook.presto.spi.type.VarcharType;
+import com.facebook.presto.spi.type.IntegerType;
 import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-
+import java.util.Optional;
 /**
  * {@link com.joyent.manta.presto.column.ColumnLister} implementation that
  * creates a column list based on the first line of JSON read from a new line
@@ -101,26 +102,38 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
 
         @Override
         public List<MantaColumn> call() {
-            final MantaObject first = firstObjectForTable(tableName, table);
-            final String objectPath = first.getPath();
-            final String firstLine = readFirstLine(objectPath);
-
-            final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
             final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
-            final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+            Optional<JsonNode> colCfg = table.getColumnConfig();
+            if ( colCfg.isPresent() ) {
+                final Iterator<JsonNode> colCfgItr = colCfg.get().elements();
+                while (colCfgItr.hasNext()) {
+                    JsonNode colCfgEnt = colCfgItr.next();
+                    MantaColumn column = buildColumnFromNameAndType(colCfgEnt.findValue("name").toString(), colCfgEnt.findValue("type").toString());
+                    if (column != null) {
+                        columns.add(column);
+                    }
+                }
+            } else {
+                final MantaObject first = firstObjectForTable(tableName, table);
+                final String objectPath = first.getPath();
+                final String firstLine = readFirstLine(objectPath);
 
-            while (itr.hasNext()) {
-                final Map.Entry<String, JsonNode> next = itr.next();
-                String key = next.getKey();
-                JsonNode val = next.getValue();
 
-                MantaColumn column = buildColumn(key, val);
+                final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
+                final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
 
-                if (column != null) {
-                    columns.add(column);
+                while (itr.hasNext()) {
+                    final Map.Entry<String, JsonNode> next = itr.next();
+                    String key = next.getKey();
+                    JsonNode val = next.getValue();
+
+                    MantaColumn column = buildColumn(key, val);
+
+                    if (column != null) {
+                        columns.add(column);
+                    }
                 }
             }
-
             return columns.build();
         }
     }
@@ -236,6 +249,38 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                     extraInfo = "string";
                 }
 
+                break;
+            default:
+                return null;
+        }
+
+        return new MantaColumn(key, type, extraInfo);
+    }
+
+    private MantaColumn buildColumnFromNameAndType(final String key, final String inType) {
+        final Type type;
+        final String extraInfo;
+
+        switch (inType) {
+            case "bool":
+                type = BooleanType.BOOLEAN;
+                extraInfo = "boolean";
+                break;
+            case "null":
+                type = VarcharType.VARCHAR;
+                extraInfo = "null";
+                break;
+            case "int":
+                type = IntegerType.INTEGER;
+                extraInfo = "number";
+                break;
+            case "json":
+                type = JsonType.JSON;
+                extraInfo = "jsonObject";
+                break;
+            case "string":
+                type = VarcharType.VARCHAR;
+                extraInfo = "string";
                 break;
             default:
                 return null;
