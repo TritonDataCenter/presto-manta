@@ -45,6 +45,9 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * {@link com.joyent.manta.presto.column.ColumnLister} implementation that
  * creates a column list based on the first line of JSON read from a new line
@@ -93,7 +96,7 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
     private final class ColumnListLoader implements Callable<List<MantaColumn>> {
         private final MantaSchemaTableName tableName;
         private final MantaLogicalTable table;
-
+        public final Logger LOG = LoggerFactory.getLogger(ColumnListLoader.class);
         private ColumnListLoader(final MantaSchemaTableName tableName,
                                  final MantaLogicalTable table) {
             this.tableName = tableName;
@@ -105,15 +108,23 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
             final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
             Optional<JsonNode> colCfg = table.getColumnConfig();
             if ( colCfg.isPresent() ) {
+                LOG.debug("In colCfg is Present");
+
                 final Iterator<JsonNode> colCfgItr = colCfg.get().elements();
                 while (colCfgItr.hasNext()) {
                     JsonNode colCfgEnt = colCfgItr.next();
-                    MantaColumn column = buildColumnFromNameAndType(colCfgEnt.findValue("name").toString(), colCfgEnt.findValue("type").toString());
+                    String colname  = colCfgEnt.findValue("column").textValue();
+                    String coltype =  colCfgEnt.findValue("type").textValue();
+                    if ((StringUtils.isEmpty(colname) || StringUtils.isEmpty(coltype))) LOG.debug ("coltype or colname null");
+                    MantaColumn column = buildColumnFromNameAndType(colname, coltype);
                     if (column != null) {
                         columns.add(column);
                     }
                 }
             } else {
+                LOG.debug("In colCfg is NOT Present");
+
+
                 final MantaObject first = firstObjectForTable(tableName, table);
                 final String objectPath = first.getPath();
                 final String firstLine = readFirstLine(objectPath);
@@ -162,8 +173,8 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                                          final MantaLogicalTable table,
                                          final ConnectorSession session) {
         final ColumnListLoader loader = new ColumnListLoader(tableName, table);
-
         try {
+
             return columnCache.get(session.getQueryId(), loader);
         } catch (ExecutionException e) {
             String msg = "Error loading column listing from JSON source";

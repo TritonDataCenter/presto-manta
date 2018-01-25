@@ -19,7 +19,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
+import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -43,7 +46,7 @@ import java.util.regex.Pattern;
  */
 public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogicalTable> {
     private final ConfigContext config;
-
+    public final static Logger LOG = LoggerFactory.getLogger(MantaLogicalTableDeserializer.class);
     /**
      * Creates a new instance base on the instantiated Manta configuration.
      *
@@ -88,8 +91,8 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
-
-        final Optional<JsonNode> columnConfig = readColumnsArray(objectNode.get("columns"), p);
+        LOG.debug("before readColumnsArray");
+        final Optional<JsonNode> columnConfig = readColumnsArray(objectNode.get("columnConfig"), p);
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
@@ -242,6 +245,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     private static Optional<JsonNode> readColumnsArray(final JsonNode columnConfig,
                                              final JsonParser p) throws JsonProcessingException {
         final Optional<JsonNode> retnode;
+        LOG.debug("readColumnsArray");
         /**
          *  If this 'columns' field is not present in the .json, or empty just return null
          *  We'll detect this and use the first line of the .json to define the columns instead.
@@ -249,13 +253,13 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         if ((columnConfig != null) && columnConfig.isArray()) {
             // Check whether each array element has the required columns
             for (JsonNode element : columnConfig) {
-                if (element.isObject()) {
+                if (element.isObject()) {/*
                     if (!(element.has("column")
-                            && element.has("display_name") && element.has("type"))) {
+                            && element.has("displayname") && element.has("type"))) {
                         String msg = String.format("Expected JSON columns Array to have elements "
                                 + "column, display_name, and type defined for each object in array.");
                         throw new JsonMappingException(p, msg);
-                    }
+                    }*/
                 } else {
                     String msg = String.format("Expected JSON columns Array element"
                             + "to be a json object.");
