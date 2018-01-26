@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
-import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,7 @@ import java.util.regex.Pattern;
  */
 public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogicalTable> {
     private final ConfigContext config;
-    public final static Logger LOG = LoggerFactory.getLogger(MantaLogicalTableDeserializer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MantaLogicalTableDeserializer.class);
     /**
      * Creates a new instance base on the instantiated Manta configuration.
      *
@@ -239,21 +238,27 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     }
 
     /**
-     * Reads & Verifies column JsonNode format, returns null if columnConfig is not an arrays.
+     * Reads & Verifies column JsonNode format, returns null if columnConfig
+     * is not an arrays.
      */
+    private static Optional<JsonNode> readColumnsArray(
+            final JsonNode columnConfig, final JsonParser p)
+            throws JsonProcessingException {
 
-    private static Optional<JsonNode> readColumnsArray(final JsonNode columnConfig,
-                                             final JsonParser p) throws JsonProcessingException {
         final Optional<JsonNode> retnode;
         LOG.debug("readColumnsArray");
-        /**
-         *  If this 'columns' field is not present in the .json, or empty just return null
-         *  We'll detect this and use the first line of the .json to define the columns instead.
+
+        /*
+         *  If this 'columns' field is not present in the .json, or empty just
+         *  return null.
+         *  We'll detect this and use the first line of the .json to define the
+         *  columns instead.
          */
         if ((columnConfig != null) && columnConfig.isArray()) {
             // Check whether each array element has the required columns
             for (JsonNode element : columnConfig) {
-                if (element.isObject()) {/*
+                if (element.isObject()) {
+                    /*
                     if (!(element.has("column")
                             && element.has("displayname") && element.has("type"))) {
                         String msg = String.format("Expected JSON columns Array to have elements "

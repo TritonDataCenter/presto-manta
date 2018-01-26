@@ -81,7 +81,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     public MantaLogicalTable(final String tableName,
                              final String rootPath,
                              final MantaDataFileType dataFileType,
-                             final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition ) {
+                             final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition) {
         this.tableName = tableName;
         this.rootPath = rootPath;
         this.dataFileType = dataFileType;

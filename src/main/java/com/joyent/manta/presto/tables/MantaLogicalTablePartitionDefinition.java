@@ -47,7 +47,15 @@ public class MantaLogicalTablePartitionDefinition {
     private final LinkedHashSet<String> filterPartitions =
             new LinkedHashSet<>();
     /**
-     * MantaLogicalTablePartitionDefinition
+     * Creates a new instance with the specified parameters. This constructor
+     * is used by Jackson to create instances.
+     *
+     * @param directoryFilterRegexString regular expression for pre-filtering directories
+     * @param filterRegexString regular expression that will filter all results from the root path
+     * @param directoryFilterPartitions set of ordered partition names that correspond to the regex groups
+     *                                  provided in the diretoryFilterRegex
+     * @param filterPartitions set of ordered partition names that correspond to the regex groups
+     *                         provided in the filterRegex
      */
     @JsonCreator
     public MantaLogicalTablePartitionDefinition(
@@ -76,6 +84,18 @@ public class MantaLogicalTablePartitionDefinition {
         }
     }
 
+    /**
+     * Creates a new instance with the specified parameters. This constructor
+     * is used internally to create instances based on the actual class types
+     * and not the string representation of the objects.
+     *
+     * @param directoryFilterRegex regular expression for pre-filtering directories
+     * @param filterRegex regular expression that will filter all results from the root path
+     * @param directoryFilterPartitions set of ordered partition names that correspond to the regex groups
+     *                                  provided in the diretoryFilterRegex
+     * @param filterPartitions set of ordered partition names that correspond to the regex groups
+     *                         provided in the filterRegex
+     */
     public MantaLogicalTablePartitionDefinition(final Pattern directoryFilterRegex,
                                                 final Pattern filterRegex,
                                                 final LinkedHashSet<String> directoryFilterPartitions,
@@ -102,15 +122,15 @@ public class MantaLogicalTablePartitionDefinition {
     }
 
     @JsonProperty
-    @JsonDeserialize(as=LinkedHashSet.class)
-    @JsonSerialize(as=LinkedHashSet.class)
+    @JsonDeserialize(as = LinkedHashSet.class)
+    @JsonSerialize(as = LinkedHashSet.class)
     public LinkedHashSet<String> getDirectoryFilterPartitions() {
         return directoryFilterPartitions;
     }
 
     @JsonProperty
-    @JsonDeserialize(as=LinkedHashSet.class)
-    @JsonSerialize(as=LinkedHashSet.class)
+    @JsonDeserialize(as = LinkedHashSet.class)
+    @JsonSerialize(as = LinkedHashSet.class)
     public LinkedHashSet<String> getFilterPartitions() {
         return filterPartitions;
     }

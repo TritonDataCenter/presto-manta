@@ -15,13 +15,13 @@ import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Class that given a {@link MantaSchemaTableName} and a {@link MantaLogicalTable}
@@ -34,7 +34,8 @@ public class RedirectingColumnLister implements ColumnLister {
     private final MantaConnectorId connectorId;
     private final MantaJsonFileColumnLister jsonLister;
     private final MantaTelegrafColumnLister telegrafLister;
-    public final Logger LOG = LoggerFactory.getLogger(RedirectingColumnLister.class);
+    private static final Logger LOG = LoggerFactory.getLogger(
+            RedirectingColumnLister.class);
 
     /**
      * Creates a new instance with the required properties.

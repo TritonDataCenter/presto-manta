@@ -13,10 +13,10 @@ import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DateType;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.DoubleType;
+import com.facebook.presto.spi.type.IntegerType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.VarbinaryType;
 import com.facebook.presto.spi.type.VarcharType;
-import com.facebook.presto.spi.type.IntegerType;
 import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +35,8 @@ import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -42,11 +44,9 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link com.joyent.manta.presto.column.ColumnLister} implementation that
@@ -96,7 +96,9 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
     private final class ColumnListLoader implements Callable<List<MantaColumn>> {
         private final MantaSchemaTableName tableName;
         private final MantaLogicalTable table;
-        public final Logger LOG = LoggerFactory.getLogger(ColumnListLoader.class);
+
+        private final Logger log = LoggerFactory.getLogger(ColumnListLoader.class);
+
         private ColumnListLoader(final MantaSchemaTableName tableName,
                                  final MantaLogicalTable table) {
             this.tableName = tableName;
@@ -107,22 +109,28 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         public List<MantaColumn> call() {
             final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
             Optional<JsonNode> colCfg = table.getColumnConfig();
-            if ( colCfg.isPresent() ) {
-                LOG.debug("In colCfg is Present");
+            if (colCfg.isPresent()) {
+                log.debug("In colCfg is Present");
 
                 final Iterator<JsonNode> colCfgItr = colCfg.get().elements();
                 while (colCfgItr.hasNext()) {
                     JsonNode colCfgEnt = colCfgItr.next();
                     String colname  = colCfgEnt.findValue("column").textValue();
                     String coltype =  colCfgEnt.findValue("type").textValue();
-                    if ((StringUtils.isEmpty(colname) || StringUtils.isEmpty(coltype))) LOG.debug ("coltype or colname null");
+
+                    if (log.isDebugEnabled()
+                            && (StringUtils.isEmpty(colname) || StringUtils.isEmpty(coltype))) {
+                        log.debug("coltype or colname null");
+                    }
+
                     MantaColumn column = buildColumnFromNameAndType(colname, coltype);
+
                     if (column != null) {
                         columns.add(column);
                     }
                 }
             } else {
-                LOG.debug("In colCfg is NOT Present");
+                log.debug("In colCfg is NOT Present");
 
 
                 final MantaObject first = firstObjectForTable(tableName, table);
