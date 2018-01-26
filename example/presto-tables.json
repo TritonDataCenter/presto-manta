@@ -15,6 +15,17 @@
   },
   {
     "name":"logical-table-3",
+    "rootPath":"~~/stor/json-examples",
+    "dataFileType":"NDJSON",
+    "columnConfig":[
+      {"column":"name","type":"string"},
+      {"column":"timestamp","type":"timestamp-epoch-seconds"},
+      {"column":"count","type":"int"},
+      {"column":"properties","type":"json"}
+    ]
+  },
+  {
+    "name":"logical-table-4",
     "rootPath":"~~/stor/analytics_compressed",
     "dataFileType":"NDJSON",
     "partitioning": {

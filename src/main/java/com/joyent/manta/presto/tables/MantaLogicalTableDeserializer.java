@@ -7,6 +7,7 @@
  */
 package com.joyent.manta.presto.tables;
 
+import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.ObjectCodec;
@@ -16,9 +17,12 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableList;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
+import com.joyent.manta.presto.column.ColumnTypeDefinition;
+import com.joyent.manta.presto.column.MantaColumn;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -91,7 +96,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
         LOG.debug("before readColumnsArray");
-        final Optional<JsonNode> columnConfig = readColumnsArray(objectNode.get("columnConfig"), p);
+        final Optional<List<MantaColumn>> columnConfig = readColumnsArray(objectNode.get("columnConfig"), p);
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
@@ -241,11 +246,12 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      * Reads & Verifies column JsonNode format, returns null if columnConfig
      * is not an arrays.
      */
-    private static Optional<JsonNode> readColumnsArray(
+    private static Optional<List<MantaColumn>> readColumnsArray(
             final JsonNode columnConfig, final JsonParser p)
             throws JsonProcessingException {
 
-        final Optional<JsonNode> retnode;
+        final Optional<List<MantaColumn>> optionalColumnList;
+
         LOG.debug("readColumnsArray");
 
         /*
@@ -255,27 +261,122 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
          *  columns instead.
          */
         if ((columnConfig != null) && columnConfig.isArray()) {
+            final ImmutableList.Builder<MantaColumn> columnBuilder =
+                    ImmutableList.builder();
+
             // Check whether each array element has the required columns
             for (JsonNode element : columnConfig) {
-                if (element.isObject()) {
-                    /*
-                    if (!(element.has("column")
-                            && element.has("displayname") && element.has("type"))) {
-                        String msg = String.format("Expected JSON columns Array to have elements "
-                                + "column, display_name, and type defined for each object in array.");
-                        throw new JsonMappingException(p, msg);
-                    }*/
-                } else {
-                    String msg = String.format("Expected JSON columns Array element"
+                if (!element.isObject()) {
+                    String msg = String.format("Expected JSON columns array element"
                             + "to be a json object.");
                     throw new JsonMappingException(p, msg);
                 }
-            }
-            retnode = Optional.of(columnConfig);
-        } else {
-            retnode = Optional.empty();
-        }
-        return retnode;
 
+                @SuppressWarnings("unchecked")
+                final ObjectNode objectNode = (ObjectNode)element;
+
+                final String name = readName(objectNode, p);
+                final String displayName = readDisplayName(objectNode, p);
+                final Type type = readType(objectNode, p);
+
+                MantaColumn column = new MantaColumn(
+                        name, type, displayName);
+                columnBuilder.add(column);
+            }
+
+            optionalColumnList = Optional.of(columnBuilder.build());
+        } else {
+            optionalColumnList = Optional.empty();
+        }
+
+        return optionalColumnList;
+    }
+
+    private static String readName(final ObjectNode element, final JsonParser p)
+            throws JsonMappingException {
+        final JsonNode name = element.get("column");
+
+        if (name == null || name.isNull()) {
+            String msg = String.format("Expected JSON element [column] "
+                    + "to not be null.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        if (!name.isTextual()) {
+            String msg = String.format("Expected JSON [column] element "
+                    + "to be a string.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        final String text = name.asText();
+
+        if (StringUtils.isBlank(text)) {
+            String msg = String.format("Expected JSON [column] element "
+                    + "to not be blank.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        return text;
+    }
+
+    private static String readDisplayName(final ObjectNode element, final JsonParser p)
+            throws JsonMappingException {
+        final JsonNode displayName = element.get("displayName");
+
+        if (displayName == null || displayName.isNull()) {
+            return null;
+        }
+
+        if (!displayName.isTextual()) {
+            String msg = String.format("Expected JSON [displayName] element "
+                    + "to be a string.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        final String text = displayName.asText();
+
+        if (StringUtils.isBlank(text)) {
+            String msg = String.format("Expected JSON [displayName] element "
+                    + "to not be blank.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        return text;
+    }
+
+    private static Type readType(final ObjectNode element, final JsonParser p)
+            throws JsonMappingException {
+        final JsonNode type = element.get("type");
+
+        if (type == null || type.isNull()) {
+            String msg = String.format("Expected JSON element [type] "
+                    + "to not be null.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        if (!type.isTextual()) {
+            String msg = String.format("Expected JSON element [type] "
+                    + "to be a string.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        final String text = type.asText();
+
+        if (StringUtils.isBlank(text)) {
+            String msg = String.format("Expected JSON element [type] "
+                    + "to not be blank.");
+            throw new JsonMappingException(p, msg);
+        }
+
+        final ColumnTypeDefinition typeDefinition =
+                ColumnTypeDefinition.valueOfTypeName(text);
+
+        if (typeDefinition == null) {
+            String msg = String.format("Unrecognized value for [type]: "
+                    + "%s", text);
+            throw new JsonMappingException(p, msg);
+        }
+
+        return typeDefinition.getPrestoType();
     }
 }

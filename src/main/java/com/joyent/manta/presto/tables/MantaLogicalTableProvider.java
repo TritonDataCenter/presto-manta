@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-
 import static com.joyent.manta.client.MantaClient.SEPARATOR;
 
 /**
@@ -145,10 +144,14 @@ public class MantaLogicalTableProvider {
         } catch (ExecutionException e) {
             String msg = "Error loading table definition for schema";
 
+            Throwable cause = e.getCause();
+
             MantaPrestoSchemaNotFoundException me = new MantaPrestoSchemaNotFoundException(
-                    schemaName, msg, e.getCause());
+                    schemaName, msg, cause);
             me.setContextValue("schemaName", schemaName);
             me.setContextValue("pathToDefinition", pathToDefinition);
+            me.setContextValue("causeMessage", cause.getMessage());
+
             throw me;
         }
     }

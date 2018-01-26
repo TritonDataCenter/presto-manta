@@ -10,12 +10,13 @@ package com.joyent.manta.presto.tables;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.MantaDataFileType;
+import com.joyent.manta.presto.column.MantaColumn;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -52,7 +53,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     /**
      * A JsonNode structure that contains the column definitions.
      */
-    private final Optional<JsonNode> columnConfig;
+    private final Optional<List<MantaColumn>> columnConfig;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -104,7 +105,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
                              @JsonProperty("rootPath") final String rootPath,
                              @JsonProperty("dataFileType") final MantaDataFileType dataFileType,
                              @JsonProperty("partitionDefinition") final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition,
-                             @JsonProperty("columnConfig") final Optional<JsonNode> columnConfig) {
+                             @JsonProperty("columnConfig") final Optional<List<MantaColumn>> columnConfig) {
         this.tableName = Validate.notBlank(tableName, "table name must not be blank");
         this.rootPath = Validate.notBlank(rootPath, "root path must not be blank");
         this.dataFileType = Objects.requireNonNull(dataFileType, "data file type is null");
@@ -128,7 +129,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     }
 
     @JsonProperty
-    public Optional<JsonNode> getColumnConfig() {
+    public Optional<List<MantaColumn>> getColumnConfig() {
         return columnConfig;
     }
 

@@ -13,7 +13,6 @@ import com.facebook.presto.spi.type.BooleanType;
 import com.facebook.presto.spi.type.DateType;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.DoubleType;
-import com.facebook.presto.spi.type.IntegerType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.VarbinaryType;
 import com.facebook.presto.spi.type.VarcharType;
@@ -107,50 +106,37 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
 
         @Override
         public List<MantaColumn> call() {
-            final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
-            Optional<JsonNode> colCfg = table.getColumnConfig();
-            if (colCfg.isPresent()) {
-                log.debug("In colCfg is Present");
+            Optional<List<MantaColumn>> columnConfig = table.getColumnConfig();
 
-                final Iterator<JsonNode> colCfgItr = colCfg.get().elements();
-                while (colCfgItr.hasNext()) {
-                    JsonNode colCfgEnt = colCfgItr.next();
-                    String colname  = colCfgEnt.findValue("column").textValue();
-                    String coltype =  colCfgEnt.findValue("type").textValue();
+            /* We have no work to do if the columns are already defined in the
+             * table configuration. */
+            if (columnConfig.isPresent()) {
+                log.trace("Columns are explicitly defined");
 
-                    if (log.isDebugEnabled()
-                            && (StringUtils.isEmpty(colname) || StringUtils.isEmpty(coltype))) {
-                        log.debug("coltype or colname null");
-                    }
+                return columnConfig.get();
+            }
 
-                    MantaColumn column = buildColumnFromNameAndType(colname, coltype);
+            final ImmutableList.Builder<MantaColumn> columns =
+                    new ImmutableList.Builder<>();
 
-                    if (column != null) {
-                        columns.add(column);
-                    }
-                }
-            } else {
-                log.debug("In colCfg is NOT Present");
+            log.trace("Columns are not explicitly defined - doing a best guess");
 
+            final MantaObject first = firstObjectForTable(tableName, table);
+            final String objectPath = first.getPath();
+            final String firstLine = readFirstLine(objectPath);
 
-                final MantaObject first = firstObjectForTable(tableName, table);
-                final String objectPath = first.getPath();
-                final String firstLine = readFirstLine(objectPath);
+            final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
+            final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
 
+            while (itr.hasNext()) {
+                final Map.Entry<String, JsonNode> next = itr.next();
+                String key = next.getKey();
+                JsonNode val = next.getValue();
 
-                final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
-                final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
+                MantaColumn column = buildColumn(key, val);
 
-                while (itr.hasNext()) {
-                    final Map.Entry<String, JsonNode> next = itr.next();
-                    String key = next.getKey();
-                    JsonNode val = next.getValue();
-
-                    MantaColumn column = buildColumn(key, val);
-
-                    if (column != null) {
-                        columns.add(column);
-                    }
+                if (column != null) {
+                    columns.add(column);
                 }
             }
             return columns.build();
@@ -268,38 +254,6 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                     extraInfo = "string";
                 }
 
-                break;
-            default:
-                return null;
-        }
-
-        return new MantaColumn(key, type, extraInfo);
-    }
-
-    private MantaColumn buildColumnFromNameAndType(final String key, final String inType) {
-        final Type type;
-        final String extraInfo;
-
-        switch (inType) {
-            case "bool":
-                type = BooleanType.BOOLEAN;
-                extraInfo = "boolean";
-                break;
-            case "null":
-                type = VarcharType.VARCHAR;
-                extraInfo = "null";
-                break;
-            case "int":
-                type = IntegerType.INTEGER;
-                extraInfo = "number";
-                break;
-            case "json":
-                type = JsonType.JSON;
-                extraInfo = "jsonObject";
-                break;
-            case "string":
-                type = VarcharType.VARCHAR;
-                extraInfo = "string";
                 break;
             default:
                 return null;
