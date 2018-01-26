@@ -19,7 +19,6 @@ import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
-import com.joyent.manta.presto.record.telegraf.MantaTelegrafJsonRecordCursor;
 
 import java.io.IOException;
 import java.util.List;
@@ -87,10 +86,8 @@ public class MantaRecordSet implements RecordSet {
 
         switch (dataFileType) {
             case NDJSON:
-                return new MantaJsonRecordCursor(streamRecreator, columns, objectPath,
-                        totalBytes, mantaInputStream, streamingReader);
             case TELEGRAF_NDJSON:
-                return new MantaTelegrafJsonRecordCursor(streamRecreator, columns, objectPath,
+                return new MantaJsonRecordCursor(streamRecreator, columns, objectPath,
                         totalBytes, mantaInputStream, streamingReader);
             default:
                 String msg = "Can't create cursor for unsupported file type";
