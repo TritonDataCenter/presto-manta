@@ -8,7 +8,6 @@
 package com.joyent.manta.presto.record.telegraf;
 
 import com.facebook.presto.spi.RecordCursor;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.joyent.manta.presto.MantaCountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
@@ -41,11 +40,5 @@ public class MantaTelegrafJsonRecordCursor extends MantaJsonRecordCursor {
                                          final MantaCountingInputStream countingStream,
                                          final ObjectReader streamingReader) {
         super(streamRecreator, columns, objectPath, totalBytes, countingStream, streamingReader);
-    }
-
-    @Override
-    protected long getTimestampFromLong(final JsonNode value) {
-        final long milliSecondConversionFactor = 1_000;
-        return super.getTimestampFromLong(value) * milliSecondConversionFactor;
     }
 }
