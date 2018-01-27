@@ -43,7 +43,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
@@ -106,16 +105,6 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
 
         @Override
         public List<MantaColumn> call() {
-            Optional<List<MantaColumn>> columnConfig = table.getColumnConfig();
-
-            /* We have no work to do if the columns are already defined in the
-             * table configuration. */
-            if (columnConfig.isPresent()) {
-                log.trace("Columns are explicitly defined");
-
-                return columnConfig.get();
-            }
-
             final ImmutableList.Builder<MantaColumn> columns =
                     new ImmutableList.Builder<>();
 

@@ -34,6 +34,8 @@ public class RedirectingColumnLister implements ColumnLister {
     private final MantaConnectorId connectorId;
     private final MantaJsonFileColumnLister jsonLister;
     private final MantaTelegrafColumnLister telegrafLister;
+    private final PredefinedColumnLister predefinedLister;
+
     private static final Logger LOG = LoggerFactory.getLogger(
             RedirectingColumnLister.class);
 
@@ -41,14 +43,17 @@ public class RedirectingColumnLister implements ColumnLister {
      * Creates a new instance with the required properties.
      *
      * @param connectorId presto connection id object for debugging
+     * @param predefinedLister lister instance for processing columns from configuration
      * @param jsonLister lister instance for processing JSON columns
      * @param telegrafLister lister instance for processing telegraf JSON columns
      */
     @Inject
     public RedirectingColumnLister(final MantaConnectorId connectorId,
+                                   final PredefinedColumnLister predefinedLister,
                                    final MantaJsonFileColumnLister jsonLister,
                                    final MantaTelegrafColumnLister telegrafLister) {
         this.connectorId = requireNonNull(connectorId, "Connector id is null");
+        this.predefinedLister = requireNonNull(predefinedLister, "Predefined lister is null");
         this.jsonLister = requireNonNull(jsonLister, "Json lister is null");
         this.telegrafLister = requireNonNull(telegrafLister, "Telegraf lister is null");
     }
@@ -57,6 +62,12 @@ public class RedirectingColumnLister implements ColumnLister {
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
                                          final MantaLogicalTable table,
                                          final ConnectorSession session) {
+        /* We route to the columns that are predefined regardless of the
+         * data type. */
+        if (table.getColumnConfig() != null && table.getColumnConfig().isPresent()) {
+            return predefinedLister.listColumns(tableName, table, session);
+        }
+
         final MantaDataFileType type = table.getDataFileType();
 
         final ColumnLister lister;
