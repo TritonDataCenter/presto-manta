@@ -95,7 +95,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
-        LOG.debug("before readColumnsArray");
+
         final Optional<List<MantaColumn>> columnConfig = readColumnsArray(objectNode.get("columnConfig"), p);
 
         try {
@@ -251,8 +251,6 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throws JsonProcessingException {
 
         final Optional<List<MantaColumn>> optionalColumnList;
-
-        LOG.debug("readColumnsArray");
 
         /*
          *  If this 'columns' field is not present in the .json, or empty just
