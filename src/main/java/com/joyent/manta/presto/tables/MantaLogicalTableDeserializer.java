@@ -7,7 +7,8 @@
  */
 package com.joyent.manta.presto.tables;
 
-import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.*;
+import com.facebook.presto.type.TypeRegistry;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.ObjectCodec;
@@ -21,8 +22,9 @@ import com.google.common.collect.ImmutableList;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
-import com.joyent.manta.presto.column.ColumnTypeDefinition;
 import com.joyent.manta.presto.column.MantaColumn;
+import com.joyent.manta.presto.types.MapStringType;
+import com.joyent.manta.presto.types.TimestampEpochSecondsType;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Jackson deserializer class used to deserialize the
@@ -51,6 +55,7 @@ import java.util.regex.Pattern;
 public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogicalTable> {
     private final ConfigContext config;
     private static final Logger LOG = LoggerFactory.getLogger(MantaLogicalTableDeserializer.class);
+
     /**
      * Creates a new instance base on the instantiated Manta configuration.
      *
@@ -366,8 +371,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-        final ColumnTypeDefinition typeDefinition =
-                ColumnTypeDefinition.valueOfTypeName(text);
+        Type typeDefinition = stringToPrestoType(text);
 
         if (typeDefinition == null) {
             String msg = String.format("Unrecognized value for [type]: "
@@ -375,6 +379,42 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-        return typeDefinition.getPrestoType();
+
+        return typeDefinition;
+
+
+    }
+
+    private static Type stringToPrestoType(String typenamestr) {
+
+        // Attempt first to return a presto built-in type based on the type string
+        TypeManager typemanager = new TypeRegistry();
+        typemanager = requireNonNull(typemanager, "typemanager is null");
+        Type prestotype = typemanager.getType(TypeSignature.parseTypeSignature(typenamestr));
+
+        // Allow additional types
+        if (prestotype==null) {
+            switch (typenamestr) {
+                case "string":
+                    prestotype = VarcharType.VARCHAR;
+                    break;
+                case "timestamp-epoch-milliseconds":
+                    prestotype = TimestampType.TIMESTAMP;
+                    break;
+                case "string[string,string]":
+                    prestotype = MapStringType.MAP_STRING_STRING;
+                    break;
+                case "string[string,double]":
+                    prestotype = MapStringType.MAP_STRING_DOUBLE;
+                    break;
+                case "timestamp-epoch-seconds":
+                    prestotype = TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
+                    break;
+                default:
+                    prestotype = null;
+                    break;
+            }
+        }
+        return prestotype;
     }
 }
