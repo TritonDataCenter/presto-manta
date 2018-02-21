@@ -17,7 +17,6 @@ import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.type.SqlTimestamp;
-import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.VarcharType;
 import com.facebook.presto.testing.TestingTransactionHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +34,7 @@ import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils;
+import com.joyent.manta.presto.types.TimestampEpochSecondsType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -42,6 +42,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -94,6 +95,9 @@ public class MantaTelegrafJsonRecordCursorIT {
 
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         final long timestampSeconds = 1496275200;
+        final long timestampMilliseconds = Instant.ofEpochSecond(timestampSeconds)
+                .toEpochMilli();
+
         node.put("timestamp", timestampSeconds);
 
         {
@@ -113,8 +117,9 @@ public class MantaTelegrafJsonRecordCursorIT {
         }
 
         final Function<Block[], Void> assertion = blocks -> {
-            SqlTimestamp timestamp = (SqlTimestamp)TimestampType.TIMESTAMP.getObjectValue(session, blocks[0], 0);
-            Assert.assertEquals(timestamp.getMillisUtc(), timestampSeconds * 1_000L,
+            SqlTimestamp timestamp = (SqlTimestamp) TimestampEpochSecondsType
+                    .TIMESTAMP_EPOCH_SECONDS.getObjectValue(session, blocks[0], 0);
+            Assert.assertEquals(timestamp.getMillisUtc(), timestampMilliseconds,
                     "Epoch seconds was not converted to epoch milliseconds");
 
             Map<String, String> tags = (Map<String, String>)MAP_STRING_STRING.getObjectValue(session, blocks[1], 0);
