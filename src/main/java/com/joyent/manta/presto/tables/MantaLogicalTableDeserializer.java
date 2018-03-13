@@ -7,7 +7,11 @@
  */
 package com.joyent.manta.presto.tables;
 
-import com.facebook.presto.spi.type.*;
+import com.facebook.presto.spi.type.TimestampType;
+import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.TypeManager;
+import com.facebook.presto.spi.type.TypeSignature;
+import com.facebook.presto.spi.type.VarcharType;
 import com.facebook.presto.type.TypeRegistry;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -26,17 +30,18 @@ import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.types.MapStringType;
 import com.joyent.manta.presto.types.TimestampEpochSecondsType;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
-
-import static java.util.Objects.requireNonNull;
 
 /**
  * Jackson deserializer class used to deserialize the
@@ -53,7 +58,19 @@ import static java.util.Objects.requireNonNull;
  * @since 1.0.0
  */
 public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogicalTable> {
+    /**
+     * Manta configuration object.
+     */
     private final ConfigContext config;
+
+    /**
+     * Reference to type registry used for resolving Presto native types.
+     */
+    private static final TypeManager TYPE_MANAGER = new TypeRegistry();
+
+    /**
+     * Logger instance.
+     */
     private static final Logger LOG = LoggerFactory.getLogger(MantaLogicalTableDeserializer.class);
 
     /**
@@ -157,6 +174,8 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
     /**
      * Attempts to read a string that must be present. If it can't, it errors.
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
     private static String readRequiredString(final JsonNode node, final String fieldName,
                                              final JsonParser p) throws JsonProcessingException {
@@ -180,6 +199,8 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     /**
      * Attempts to read a regex pattern as a String and then compile it. If it
      * can't it errors.
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
     private static Pattern readPattern(final JsonNode node, final String fieldName,
                                        final JsonParser p) throws JsonProcessingException {
@@ -250,6 +271,8 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     /**
      * Reads & Verifies column JsonNode format, returns null if columnConfig
      * is not an arrays.
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
     private static Optional<List<MantaColumn>> readColumnsArray(
             final JsonNode columnConfig, final JsonParser p)
@@ -271,14 +294,15 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             for (JsonNode element : columnConfig) {
                 if (!element.isObject()) {
                     String msg = String.format("Expected JSON columns array element"
-                            + "to be a json object.");
+                            + "to be a json object [actualType=%s].",
+                            Objects.toString(element.getNodeType()));
                     throw new JsonMappingException(p, msg);
                 }
 
                 @SuppressWarnings("unchecked")
                 final ObjectNode objectNode = (ObjectNode)element;
 
-                final String name = readName(objectNode, p);
+                final String name = readColumnName(objectNode, p);
                 final String displayName = readDisplayName(objectNode, p);
                 final Type type = readType(objectNode, p);
 
@@ -295,7 +319,16 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return optionalColumnList;
     }
 
-    private static String readName(final ObjectNode element, final JsonParser p)
+    /**
+     * Reads the name of a column from a JSON element.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     * @return the column name as a string
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
+    private static String readColumnName(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
         final JsonNode name = element.get("column");
 
@@ -322,6 +355,16 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return text;
     }
 
+
+    /**
+     * Reads the display name of a column from a JSON element.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     * @return the display name as a string
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
     private static String readDisplayName(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
         final JsonNode displayName = element.get("displayName");
@@ -347,6 +390,15 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         return text;
     }
 
+    /**
+     * Reads the type of a column from a JSON element.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     * @return the Presto type as an object
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
     private static Type readType(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
         final JsonNode type = element.get("type");
@@ -371,7 +423,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-        Type typeDefinition = stringToPrestoType(text);
+        Type typeDefinition = parseTypeFromString(text);
 
         if (typeDefinition == null) {
             String msg = String.format("Unrecognized value for [type]: "
@@ -381,40 +433,79 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
 
         return typeDefinition;
-
-
     }
 
-    private static Type stringToPrestoType(String typenamestr) {
+    /**
+     * Parses a given type name as a string and converts it to a Presto {@link Type}
+     * object.
+     *
+     * @param typeNameAsString type name to parse
+     * @return Presto type object relating to human readable type name or null if not found
+     */
+    @Nullable
+    private static Type parseTypeFromString(String typeNameAsString) {
+        Validate.notBlank(typeNameAsString, "type name must not be blank");
 
-        // Attempt first to return a presto built-in type based on the type string
-        TypeManager typemanager = new TypeRegistry();
-        typemanager = requireNonNull(typemanager, "typemanager is null");
-        Type prestotype = typemanager.getType(TypeSignature.parseTypeSignature(typenamestr));
+        // Attempt to parse type name using Presto's native type names
+        final Type nativeType = parsePrestoNativeTypeFromString(typeNameAsString);
 
-        // Allow additional types
-        if (prestotype==null) {
-            switch (typenamestr) {
-                case "string":
-                    prestotype = VarcharType.VARCHAR;
-                    break;
-                case "timestamp-epoch-milliseconds":
-                    prestotype = TimestampType.TIMESTAMP;
-                    break;
-                case "string[string,string]":
-                    prestotype = MapStringType.MAP_STRING_STRING;
-                    break;
-                case "string[string,double]":
-                    prestotype = MapStringType.MAP_STRING_DOUBLE;
-                    break;
-                case "timestamp-epoch-seconds":
-                    prestotype = TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
-                    break;
-                default:
-                    prestotype = null;
-                    break;
-            }
+        if (nativeType != null) {
+            return nativeType;
         }
-        return prestotype;
+
+        return parsePrestoMantaTypeFromString(typeNameAsString);
+    }
+
+    /**
+     * Parses a given type name as a string and converts it to a Presto {@link Type}
+     * object for type names specific to the Presto Manta plugin.
+     *
+     * @param typeNameAsString type name to parse
+     * @return Presto type object relating to human readable type name or null if not found
+     */
+    @Nullable
+    private static Type parsePrestoMantaTypeFromString(final String typeNameAsString) {
+        final Type type;
+
+        switch (typeNameAsString) {
+            case "string":
+                type = VarcharType.VARCHAR;
+                break;
+            case "timestamp-epoch-milliseconds":
+                type = TimestampType.TIMESTAMP;
+                break;
+            case "string[string,string]":
+                type = MapStringType.MAP_STRING_STRING;
+                break;
+            case "string[string,double]":
+                type = MapStringType.MAP_STRING_DOUBLE;
+                break;
+            case "timestamp-epoch-seconds":
+                type = TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
+                break;
+            default:
+                type = null;
+                break;
+        }
+
+        return type;
+    }
+
+    /**
+     * Parses a given type name as a string and converts it to a Presto {@link Type}
+     * object for type names specific to the Presto.
+     *
+     * @param typeNameAsString type name to parse
+     * @return Presto type object relating to human readable type name or null if not found
+     */
+    @Nullable
+    private static Type parsePrestoNativeTypeFromString(final String typeNameAsString) {
+        final TypeSignature typeSignature = TypeSignature.parseTypeSignature(typeNameAsString);
+
+        if (typeSignature == null) {
+            return null;
+        }
+
+        return TYPE_MANAGER.getType(typeSignature);
     }
 }
