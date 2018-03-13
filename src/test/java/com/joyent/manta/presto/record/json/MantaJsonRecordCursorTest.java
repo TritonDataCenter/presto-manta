@@ -154,7 +154,8 @@ public class MantaJsonRecordCursorTest {
         ImmutableList.Builder<MantaColumn> columns =
                 new ImmutableList.Builder<>();
 
-        columns.add(new MantaColumn("date", DATE, "date yyyy-MM-dd"));
+        columns.add(new MantaColumn("date", DATE, "date string",
+                "date yyyy-MM-dd", false, null));
         columns.add(new MantaColumn("name", VARCHAR, "string"));
         columns.add(new MantaColumn("article_id", VARCHAR, "string"));
         columns.add(new MantaColumn("publisher_id", VARCHAR, "string"));

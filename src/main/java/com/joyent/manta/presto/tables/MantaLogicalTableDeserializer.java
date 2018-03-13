@@ -307,7 +307,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 final Type type = readType(objectNode, p);
 
                 MantaColumn column = new MantaColumn(
-                        name, type, displayName);
+                        name, type, null, null, false, displayName);
                 columnBuilder.add(column);
             }
 
@@ -443,7 +443,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      * @return Presto type object relating to human readable type name or null if not found
      */
     @Nullable
-    private static Type parseTypeFromString(String typeNameAsString) {
+    private static Type parseTypeFromString(final String typeNameAsString) {
         Validate.notBlank(typeNameAsString, "type name must not be blank");
 
         // Attempt to parse type name using Presto's native type names

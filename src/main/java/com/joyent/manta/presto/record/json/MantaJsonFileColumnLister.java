@@ -248,7 +248,7 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 return null;
         }
 
-        return new MantaColumn(key, type, extraInfo);
+        return new MantaColumn(key, type, null, extraInfo, false, null);
     }
 
     private String findDateFormat(final String key, final JsonNode val) {
