@@ -7,12 +7,7 @@
  */
 package com.joyent.manta.presto.tables;
 
-import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.Type;
-import com.facebook.presto.spi.type.TypeManager;
-import com.facebook.presto.spi.type.TypeSignature;
-import com.facebook.presto.spi.type.VarcharType;
-import com.facebook.presto.type.TypeRegistry;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.ObjectCodec;
@@ -27,14 +22,11 @@ import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.column.MantaColumn;
-import com.joyent.manta.presto.types.MapStringType;
-import com.joyent.manta.presto.types.TimestampEpochSecondsType;
+import com.joyent.manta.presto.types.TypeUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.LinkedHashSet;
@@ -62,11 +54,6 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      * Manta configuration object.
      */
     private final ConfigContext config;
-
-    /**
-     * Reference to type registry used for resolving Presto native types.
-     */
-    private static final TypeManager TYPE_MANAGER = new TypeRegistry();
 
     /**
      * Logger instance.
@@ -114,6 +101,8 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                     dataFileTypeValue);
             throw new JsonMappingException(p, msg, e);
         }
+
+        // TODO: Check for duplicate parition definitions
 
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
@@ -423,7 +412,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-        Type typeDefinition = parseTypeFromString(text);
+        final Type typeDefinition = TypeUtils.parseTypeFromString(text);
 
         if (typeDefinition == null) {
             String msg = String.format("Unrecognized value for [type]: "
@@ -431,81 +420,6 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg);
         }
 
-
         return typeDefinition;
-    }
-
-    /**
-     * Parses a given type name as a string and converts it to a Presto {@link Type}
-     * object.
-     *
-     * @param typeNameAsString type name to parse
-     * @return Presto type object relating to human readable type name or null if not found
-     */
-    @Nullable
-    private static Type parseTypeFromString(final String typeNameAsString) {
-        Validate.notBlank(typeNameAsString, "type name must not be blank");
-
-        // Attempt to parse type name using Presto's native type names
-        final Type nativeType = parsePrestoNativeTypeFromString(typeNameAsString);
-
-        if (nativeType != null) {
-            return nativeType;
-        }
-
-        return parsePrestoMantaTypeFromString(typeNameAsString);
-    }
-
-    /**
-     * Parses a given type name as a string and converts it to a Presto {@link Type}
-     * object for type names specific to the Presto Manta plugin.
-     *
-     * @param typeNameAsString type name to parse
-     * @return Presto type object relating to human readable type name or null if not found
-     */
-    @Nullable
-    private static Type parsePrestoMantaTypeFromString(final String typeNameAsString) {
-        final Type type;
-
-        switch (typeNameAsString) {
-            case "string":
-                type = VarcharType.VARCHAR;
-                break;
-            case "timestamp-epoch-milliseconds":
-                type = TimestampType.TIMESTAMP;
-                break;
-            case "string[string,string]":
-                type = MapStringType.MAP_STRING_STRING;
-                break;
-            case "string[string,double]":
-                type = MapStringType.MAP_STRING_DOUBLE;
-                break;
-            case "timestamp-epoch-seconds":
-                type = TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
-                break;
-            default:
-                type = null;
-                break;
-        }
-
-        return type;
-    }
-
-    /**
-     * Parses a given type name as a string and converts it to a Presto {@link Type}
-     * object for type names specific to the Presto.
-     *
-     * @param typeNameAsString type name to parse
-     * @return Presto type object relating to human readable type name or null if not found
-     */
-    @Nullable
-    private static Type parsePrestoNativeTypeFromString(final String typeNameAsString) {
-        final TypeSignature typeSignature = TypeSignature.parseTypeSignature(typeNameAsString);
-
-        if (typeSignature == null) {
-            return null;
-        }
-
-        return TYPE_MANAGER.getType(typeSignature);
     }
 }

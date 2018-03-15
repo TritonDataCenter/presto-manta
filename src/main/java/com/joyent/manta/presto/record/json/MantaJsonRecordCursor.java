@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -70,8 +71,10 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private static final Function<Map.Entry<String, JsonNode>, Double> JSON_DOUBLE_VALUE_EXTRACT_FUNCTION =
             entry -> entry.getValue().doubleValue();
 
+    private static final JsonNode NULL_NODE = NullNode.instance;
+
     private final List<MantaColumn> columns;
-    private Long totalBytes = null;
+    private Long totalBytes;
     private long lines = 0L;
     private int retries = 0;
     private Long readTimeStartNanos = null;
@@ -320,6 +323,11 @@ public class MantaJsonRecordCursor implements RecordCursor {
     @Override
     public Slice getSlice(final int field) {
         final JsonNode node = row.get(field);
+
+        if (node.isNull()) {
+            return null;
+        }
+
         final String text;
 
         /* We determine if we have a text node and render it as text for the
@@ -404,6 +412,13 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
         int count = 0;
         for (MantaColumn column : columns) {
+            /* Don't parse or process hidden columns because they are being used
+             * to partition based on file or directory name. */
+            if (column.isHidden()) {
+                map.put(count++, NULL_NODE);
+                continue;
+            }
+
             final String columnName = Objects.requireNonNull(column.getName(),
                     "Column name is null");
             final JsonNode node = object.get(columnName);

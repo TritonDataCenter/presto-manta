@@ -11,7 +11,6 @@ import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.type.AbstractLongType;
 import com.facebook.presto.spi.type.SqlTimestamp;
-import com.facebook.presto.spi.type.StandardTypes;
 
 import static com.facebook.presto.spi.type.TypeSignature.parseTypeSignature;
 
@@ -25,13 +24,18 @@ import static com.facebook.presto.spi.type.TypeSignature.parseTypeSignature;
  */
 public final class TimestampEpochSecondsType extends AbstractLongType {
     /**
+     * Plaintext representation of type.
+     */
+    public static final String TYPE_SIGNATURE_STRING = "timestamp epoch seconds";
+
+    /**
      * Singleton instance of type.
      */
     public static final TimestampEpochSecondsType TIMESTAMP_EPOCH_SECONDS =
             new TimestampEpochSecondsType();
 
     private TimestampEpochSecondsType() {
-        super(parseTypeSignature(StandardTypes.TIMESTAMP));
+        super(parseTypeSignature(TYPE_SIGNATURE_STRING));
     }
 
     @Override

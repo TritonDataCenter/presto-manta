@@ -133,6 +133,11 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         return columnConfig;
     }
 
+    @JsonProperty
+    public Optional<MantaLogicalTablePartitionDefinition> getPartitionDefinition() {
+        return partitionDefinition;
+    }
+
     /**
      * Predicate that applies the directory filter regex if it is not null.
      *

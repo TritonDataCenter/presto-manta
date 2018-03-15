@@ -29,6 +29,8 @@ public class MantaSplit implements ConnectorSplit {
     private final String tableName;
     private final String objectPath;
     private final MantaDataFileType dataFileType;
+    private final MantaSplitPartitionPredicate filePartitionPredicate;
+    private final MantaSplitPartitionPredicate dirPartitionPredicate;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -38,18 +40,24 @@ public class MantaSplit implements ConnectorSplit {
      * @param tableName table as defined in table definition file
      * @param objectPath path to object in Manta
      * @param dataFileType data type of all objects in table
+     * @param filePartitionPredicate partitioning scheme used to partition by filename
+     * @param dirPartitionPredicate partitioning scheme used to partition by directory
      */
     @JsonCreator
     public MantaSplit(@JsonProperty("connectorId") final String connectorId,
                       @JsonProperty("schemaName") final String schemaName,
                       @JsonProperty("tableName") final String tableName,
                       @JsonProperty("objectPath") final String objectPath,
-                      @JsonProperty("dataFileType") final MantaDataFileType dataFileType) {
+                      @JsonProperty("dataFileType") final MantaDataFileType dataFileType,
+                      @JsonProperty("filePartitionPredicate") final MantaSplitPartitionPredicate filePartitionPredicate,
+                      @JsonProperty("dirPartitionPredicate") final MantaSplitPartitionPredicate dirPartitionPredicate) {
         this.schemaName = requireNonNull(schemaName, "schema name is null");
         this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.tableName = requireNonNull(tableName, "table name is null");
         this.objectPath = requireNonNull(objectPath, "object path is null");
         this.dataFileType = requireNonNull(dataFileType, "data file type is null");
+        this.filePartitionPredicate = requireNonNull(filePartitionPredicate, "file partition predicate is null");
+        this.dirPartitionPredicate = requireNonNull(dirPartitionPredicate, "directory partition predicate is null");
     }
 
     @JsonProperty
@@ -83,6 +91,16 @@ public class MantaSplit implements ConnectorSplit {
         return true;
     }
 
+    @JsonProperty
+    public MantaSplitPartitionPredicate getFilePartitionPredicate() {
+        return filePartitionPredicate;
+    }
+
+    @JsonProperty
+    public MantaSplitPartitionPredicate getDirPartitionPredicate() {
+        return dirPartitionPredicate;
+    }
+
     @Override
     public List<HostAddress> getAddresses() {
         throw new UnsupportedOperationException("get Addresses is not supported");
@@ -101,6 +119,8 @@ public class MantaSplit implements ConnectorSplit {
                 .append("tableName", tableName)
                 .append("objectPath", objectPath)
                 .append("dataFileType", dataFileType)
+                .append("filePartitionPredicate", filePartitionPredicate)
+                .append("dirPartitionPredicate", dirPartitionPredicate)
                 .toString();
     }
 }

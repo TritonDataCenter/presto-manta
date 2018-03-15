@@ -8,12 +8,14 @@
 package com.joyent.manta.presto.column;
 
 import com.facebook.presto.spi.ConnectorSession;
+import com.google.common.collect.ImmutableList;
 import com.joyent.manta.presto.MantaConnectorId;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.record.json.MantaJsonFileColumnLister;
 import com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
+import com.joyent.manta.presto.tables.MantaLogicalTablePartitionDefinition;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,31 +64,49 @@ public class RedirectingColumnLister implements ColumnLister {
     public List<MantaColumn> listColumns(final MantaSchemaTableName tableName,
                                          final MantaLogicalTable table,
                                          final ConnectorSession session) {
+        final List<MantaColumn> columns;
+
         /* We route to the columns that are predefined regardless of the
          * data type. */
         if (table.getColumnConfig() != null && table.getColumnConfig().isPresent()) {
-            return predefinedLister.listColumns(tableName, table, session);
+            columns = predefinedLister.listColumns(tableName, table, session);
+        } else {
+            final MantaDataFileType type = table.getDataFileType();
+
+            final ColumnLister lister;
+
+            switch (type) {
+                case NDJSON:
+                    lister = jsonLister;
+                    break;
+                case TELEGRAF_NDJSON:
+                    lister = this.telegrafLister;
+                    break;
+                default:
+                    String msg = "Unknown file type enum resolved";
+                    MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
+                    me.addContextValue("type", type);
+                    me.setContextValue("connectorId", connectorId);
+                    throw me;
+            }
+
+            columns = lister.listColumns(tableName, table, session);
         }
 
-        final MantaDataFileType type = table.getDataFileType();
-
-        final ColumnLister lister;
-
-        switch (type) {
-            case NDJSON:
-                lister = jsonLister;
-                break;
-            case TELEGRAF_NDJSON:
-                lister = this.telegrafLister;
-                break;
-            default:
-                String msg = "Unknown file type enum resolved";
-                MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);
-                me.addContextValue("type", type);
-                me.setContextValue("connectorId", connectorId);
-                throw me;
+        if (!table.getPartitionDefinition().isPresent()) {
+            return columns;
         }
 
-        return lister.listColumns(tableName, table, session);
+        final ImmutableList.Builder<MantaColumn> withPartitionColumns =
+                new ImmutableList.Builder<>();
+
+        final MantaLogicalTablePartitionDefinition partitionDefinition =
+                table.getPartitionDefinition().get();
+
+        withPartitionColumns.addAll(columns);
+        withPartitionColumns.addAll(partitionDefinition.directoryPartitionsAsColumns());
+        withPartitionColumns.addAll(partitionDefinition.filePartitionsAsColumns());
+
+        return withPartitionColumns.build();
     }
 }

@@ -7,14 +7,19 @@
  */
 package com.joyent.manta.presto.tables;
 
+import com.facebook.presto.spi.type.VarcharType;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.collect.ImmutableList;
+import com.joyent.manta.presto.column.MantaPartitionColumn;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -133,6 +138,58 @@ public class MantaLogicalTablePartitionDefinition {
     @JsonSerialize(as = LinkedHashSet.class)
     public LinkedHashSet<String> getFilterPartitions() {
         return filterPartitions;
+    }
+
+    /**
+     * Generates a list of Manta columns based on the file partitions stored.
+     *
+     * @return list of Manta columns.
+     */
+    public List<MantaPartitionColumn> filePartitionsAsColumns() {
+        return addPartitionColumns("file", getFilterRegex(),
+                getFilterPartitions());
+    }
+
+
+    /**
+     * Generates a list of Manta columns based on the directory partitions stored.
+     *
+     * @return list of Manta columns.
+     */
+    public List<MantaPartitionColumn> directoryPartitionsAsColumns() {
+        return addPartitionColumns("directory",
+                getDirectoryFilterRegex(), getDirectoryFilterPartitions());
+    }
+
+    private List<MantaPartitionColumn> addPartitionColumns(final String partitionType,
+                                                           final Pattern regex,
+                                                           final LinkedHashSet<String> partitions) {
+        final ImmutableList.Builder<MantaPartitionColumn> columns =
+                new ImmutableList.Builder<>();
+
+        if (regex == null) {
+            return Collections.emptyList();
+        }
+
+        int index = 0;
+
+        for (String columnName : partitions) {
+            final MantaPartitionColumn column = createColumnBasedOnPartition(
+                    columnName, partitionType, index++, regex.toString());
+            columns.add(column);
+        }
+
+        return columns.build();
+    }
+
+    private static MantaPartitionColumn createColumnBasedOnPartition(final String partitionName,
+                                                                     final String partitionType,
+                                                                     final int index,
+                                                                     final String regex) {
+        final String comment = String.format("%s partition match [%s] index [%d]",
+                partitionType, regex, index);
+        return new MantaPartitionColumn(index, partitionName, VarcharType.VARCHAR, comment,
+                null, true, null);
     }
 
     @Override

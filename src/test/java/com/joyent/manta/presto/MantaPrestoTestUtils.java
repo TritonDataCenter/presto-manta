@@ -8,15 +8,12 @@
 package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.connector.ConnectorContext;
-import com.facebook.presto.spi.type.TypeManager;
+import com.facebook.presto.testing.TestingConnectorContext;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Injector;
 
 import java.util.Map;
 import java.util.UUID;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class MantaPrestoTestUtils {
     static final String MANTA_AUTH_PRIVATE_KEY = "-----BEGIN RSA PRIVATE KEY-----\n" +
@@ -57,9 +54,7 @@ public class MantaPrestoTestUtils {
 
     public static Injector createInjectorInstance(final Map<String, String> config) {
         String connectorId = String.format("test-%s", UUID.randomUUID());
-        ConnectorContext context = mock(ConnectorContext.class);
-        TypeManager typeManager = mock(TypeManager.class);
-        when(context.getTypeManager()).thenReturn(typeManager);
+        ConnectorContext context = new TestingConnectorContext();
 
         try {
             return MantaConnectorFactory.buildInjector(

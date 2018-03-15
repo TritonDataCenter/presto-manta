@@ -31,6 +31,7 @@ import com.joyent.manta.presto.record.telegraf.MantaTelegrafColumnLister;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableDeserializer;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
+import com.joyent.manta.presto.types.TypeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,6 +192,8 @@ public class MantaModule implements Module {
         binder.bind(MantaMetadata.class).in(Scopes.SINGLETON);
         binder.bind(MantaSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(MantaRecordSetProvider.class).in(Scopes.SINGLETON);
+
+        binder.requestStaticInjection(TypeUtils.class);
 
         /* We use a custom deserializer in order to provide more informative errors
          * and flexible parsing to users who are manually writing presto-tables.json
