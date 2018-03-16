@@ -35,7 +35,6 @@ public class MantaPartitionColumnTest {
 
         Assert.assertNotNull(json);
 
-        MantaPartitionColumn columnDeserialized = mapper.readValue(json, MantaPartitionColumn.class);
-        Assert.assertEquals(column, columnDeserialized);
+        MantaPartitionColumn columnDeserialized = mapper.readValue(json, MantaPartitionColumn.class);Assert.assertEquals(column, columnDeserialized);
     }
 }

@@ -235,9 +235,13 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 break;
             case STRING:
                 final String dateFormat = findDateFormat(key, val);
+
+                /* Nodes identified with a name beginning with certain keywords
+                 * will be parsed as date fields. This is our best effort to
+                 * guess what format the data is in. */
                 if (dateFormat != null) {
                     type = DateType.DATE;
-                    extraInfo = "date " + dateFormat;
+                    extraInfo = "[date] " + dateFormat;
                 } else {
                     type = VarcharType.VARCHAR;
                     extraInfo = "string";
@@ -251,6 +255,14 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         return new MantaColumn(key, type, null, extraInfo, false, null);
     }
 
+    /**
+     * Attempts to automatically parse a date node.
+     *
+     * @param key name of node
+     * @param val contents of node
+     * @return null if unable to identify node as date, otherwise a string column
+     *         with extraInfo used to identify the format of the date
+     */
     private String findDateFormat(final String key, final JsonNode val) {
         final String text = val.asText();
         for (String keyword : DATE_KEYWORDS) {

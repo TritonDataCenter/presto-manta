@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Injector;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.types.MapStringType;
-import com.joyent.manta.presto.types.TimestampEpochSecondsType;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -70,18 +69,6 @@ public class MantaColumnTest {
         ObjectMapper mapper = injector.getInstance(ObjectMapper.class);
         MantaColumn column = new MantaColumn("test",
                 TimestampType.TIMESTAMP, "timestampEpochMilliseconds");
-        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(column);
-
-        Assert.assertNotNull(json);
-
-        MantaColumn columnDeserialized = mapper.readValue(json, MantaColumn.class);
-        Assert.assertEquals(column, columnDeserialized);
-    }
-
-    public void canSerializeToAndFromJsonWithTimestampEpochSeconds() throws IOException {
-        ObjectMapper mapper = injector.getInstance(ObjectMapper.class);
-        MantaColumn column = new MantaColumn("test",
-                TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS, "timestampEpochSeconds");
         String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(column);
 
         Assert.assertNotNull(json);

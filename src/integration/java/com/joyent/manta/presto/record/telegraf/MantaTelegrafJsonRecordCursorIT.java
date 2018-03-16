@@ -17,6 +17,7 @@ import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.type.SqlTimestamp;
+import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.VarcharType;
 import com.facebook.presto.testing.TestingTransactionHandle;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +35,6 @@ import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils;
-import com.joyent.manta.presto.types.TimestampEpochSecondsType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -117,8 +117,8 @@ public class MantaTelegrafJsonRecordCursorIT {
         }
 
         final Function<Block[], Void> assertion = blocks -> {
-            SqlTimestamp timestamp = (SqlTimestamp) TimestampEpochSecondsType
-                    .TIMESTAMP_EPOCH_SECONDS.getObjectValue(session, blocks[0], 0);
+            SqlTimestamp timestamp = (SqlTimestamp) TimestampType
+                    .TIMESTAMP.getObjectValue(session, blocks[0], 0);
             Assert.assertEquals(timestamp.getMillisUtc(), timestampMilliseconds,
                     "Epoch seconds was not converted to epoch milliseconds");
 

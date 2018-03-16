@@ -33,12 +33,12 @@ public class PredefinedColumnLister implements ColumnLister {
                                          final MantaLogicalTable table,
                                          final ConnectorSession session) {
         Objects.requireNonNull(table, "Table is null");
-        Objects.requireNonNull(table.getColumnConfig(),
+        Objects.requireNonNull(table.getColumns(),
                 "Table column configuration is null");
-        Validate.isTrue(table.getColumnConfig().isPresent(),
+        Validate.isTrue(table.getColumns().isPresent(),
                 "Table column configuration must be specified in "
                         + "order to use predefined lister");
 
-        return table.getColumnConfig().get();
+        return table.getColumns().get();
     }
 }

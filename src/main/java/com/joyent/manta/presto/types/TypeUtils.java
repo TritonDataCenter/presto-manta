@@ -7,7 +7,6 @@
  */
 package com.joyent.manta.presto.types;
 
-import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.spi.type.TypeManager;
 import com.facebook.presto.spi.type.TypeSignature;
@@ -103,15 +102,6 @@ public final class TypeUtils {
                 break;
             case "map(varchar,double)":
                 type = MapStringType.MAP_STRING_DOUBLE;
-                break;
-            // Alias for timestamp
-            case "timestamp-epoch-milliseconds":
-            case "timestamp epoch milliseconds":
-                type = TimestampType.TIMESTAMP;
-                break;
-            case "timestamp-epoch-seconds":
-            case TimestampEpochSecondsType.TYPE_SIGNATURE_STRING:
-                type = TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
                 break;
             default:
                 type = null;

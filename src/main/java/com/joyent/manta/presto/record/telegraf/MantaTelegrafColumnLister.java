@@ -8,6 +8,7 @@
 package com.joyent.manta.presto.record.telegraf;
 
 import com.facebook.presto.spi.ConnectorSession;
+import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.VarcharType;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.presto.column.ColumnLister;
@@ -19,7 +20,6 @@ import java.util.List;
 
 import static com.joyent.manta.presto.types.MapStringType.MAP_STRING_DOUBLE;
 import static com.joyent.manta.presto.types.MapStringType.MAP_STRING_STRING;
-import static com.joyent.manta.presto.types.TimestampEpochSecondsType.TIMESTAMP_EPOCH_SECONDS;
 
 /**
  * Hardcoded implementation of a {@link ColumnLister} that returns the fields
@@ -32,7 +32,8 @@ public class MantaTelegrafColumnLister implements ColumnLister {
      * Unmodifiable list of columns used in Telegraf data.
      */
     private static final List<MantaColumn> COLUMNS = ImmutableList.of(
-            new MantaColumn("timestamp", TIMESTAMP_EPOCH_SECONDS, "Timestamp without TZ"),
+            new MantaColumn("timestamp", TimestampType.TIMESTAMP, "Timestamp without TZ",
+                    "[timestamp] epoch-seconds", false, null),
             new MantaColumn("tags", MAP_STRING_STRING, "Associative array of tags"),
             new MantaColumn("name", VarcharType.VARCHAR, "Name of metric"),
             new MantaColumn("fields", MAP_STRING_DOUBLE, "Associative array of metric fields")

@@ -53,7 +53,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     /**
      * A JsonNode structure that contains the column definitions.
      */
-    private final Optional<List<MantaColumn>> columnConfig;
+    private final Optional<List<MantaColumn>> columns;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -69,7 +69,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         this.rootPath = rootPath;
         this.dataFileType = dataFileType;
         this.partitionDefinition = Optional.empty();
-        this.columnConfig = Optional.empty();
+        this.columns = Optional.empty();
     }
     /**
      * Creates a new instance based on the specified parameters.
@@ -87,7 +87,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         this.rootPath = rootPath;
         this.dataFileType = dataFileType;
         this.partitionDefinition = partitionDefinition;
-        this.columnConfig = Optional.empty();
+        this.columns = Optional.empty();
     }
     /**
      * Creates a new instance based on the specified parameters. This
@@ -97,7 +97,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
      * @param rootPath path in which all of the filters will be applied
      * @param dataFileType data type of which all files will conform
      * @param partitionDefinition object representing partitioning scheme for table
-     * @param columnConfig JsonNode object representing json that defines columns
+     * @param columns JsonNode object representing json that defines columns
      */
     @JsonCreator
     @SuppressWarnings("AvoidInlineConditionals")
@@ -105,12 +105,12 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
                              @JsonProperty("rootPath") final String rootPath,
                              @JsonProperty("dataFileType") final MantaDataFileType dataFileType,
                              @JsonProperty("partitionDefinition") final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition,
-                             @JsonProperty("columnConfig") final Optional<List<MantaColumn>> columnConfig) {
+                             @JsonProperty("columns") final Optional<List<MantaColumn>> columns) {
         this.tableName = Validate.notBlank(tableName, "table name must not be blank");
         this.rootPath = Validate.notBlank(rootPath, "root path must not be blank");
         this.dataFileType = Objects.requireNonNull(dataFileType, "data file type is null");
         this.partitionDefinition = partitionDefinition;
-        this.columnConfig = columnConfig;
+        this.columns = columns;
     }
 
     @JsonProperty("name")
@@ -129,8 +129,8 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     }
 
     @JsonProperty
-    public Optional<List<MantaColumn>> getColumnConfig() {
-        return columnConfig;
+    public Optional<List<MantaColumn>> getColumns() {
+        return columns;
     }
 
     @JsonProperty

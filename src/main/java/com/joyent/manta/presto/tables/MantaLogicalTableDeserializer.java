@@ -7,6 +7,8 @@
  */
 package com.joyent.manta.presto.tables;
 
+import com.facebook.presto.spi.type.DateType;
+import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,8 +29,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -71,6 +76,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     }
 
     @Override
+    @Nonnull
     public MantaLogicalTable deserialize(final JsonParser p,
                                          final DeserializationContext ctxt)
             throws IOException {
@@ -107,7 +113,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
 
-        final Optional<List<MantaColumn>> columnConfig = readColumnsArray(objectNode.get("columnConfig"), p);
+        final Optional<List<MantaColumn>> columnConfig = readColumnsArray(objectNode.get("columns"), p);
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
@@ -166,6 +172,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
+    @Nonnull
     private static String readRequiredString(final JsonNode node, final String fieldName,
                                              final JsonParser p) throws JsonProcessingException {
         if (node == null || node.isNull()) {
@@ -191,6 +198,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
+    @Nullable
     private static Pattern readPattern(final JsonNode node, final String fieldName,
                                        final JsonParser p) throws JsonProcessingException {
         final Pattern regex;
@@ -263,6 +271,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
+    @Nonnull
     private static Optional<List<MantaColumn>> readColumnsArray(
             final JsonNode columnConfig, final JsonParser p)
             throws JsonProcessingException {
@@ -294,9 +303,10 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 final String name = readColumnName(objectNode, p);
                 final String displayName = readDisplayName(objectNode, p);
                 final Type type = readType(objectNode, p);
+                final String extraInfo = readFormat(objectNode, p, type);
 
                 MantaColumn column = new MantaColumn(
-                        name, type, null, null, false, displayName);
+                        name, type, null, extraInfo, false, displayName);
                 columnBuilder.add(column);
             }
 
@@ -354,6 +364,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
+    @Nullable
     private static String readDisplayName(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
         final JsonNode displayName = element.get("displayName");
@@ -388,6 +399,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
+    @Nonnull
     private static Type readType(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
         final JsonNode type = element.get("type");
@@ -421,5 +433,65 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
         }
 
         return typeDefinition;
+    }
+
+    /**
+     * Reads the format of a column from a JSON element for use in the
+     * extraInfo portion of a {@link MantaColumn}'s metadata.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     * @param type presto type value in which the format will be applied
+     * @return the format in which a type is being parsed
+     *
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
+    @Nullable
+    private static String readFormat(final ObjectNode element, final JsonParser p,
+                                     final Type type)
+            throws JsonMappingException {
+        Objects.requireNonNull(type, "The type must not be null");
+
+        final JsonNode format = element.get("format");
+
+        if (format == null || format.isNull()) {
+            return null;
+        }
+
+        if (!format.isTextual()) {
+            String msg = "Expected JSON element [format] to be a string";
+            throw new JsonMappingException(p, msg);
+        }
+
+        String formatText = format.asText();
+
+        if (StringUtils.isBlank(formatText)) {
+            return null;
+        }
+
+        if (type.equals(TimestampType.TIMESTAMP) || type.equals(DateType.DATE)) {
+            switch (formatText) {
+                case "iso-8601":
+                case "epoch-milliseconds":
+                case "epoch-seconds":
+                case "epoch-days":
+                    break;
+                default:
+                    try {
+                        DateTimeFormatter.ofPattern(formatText);
+                    } catch (IllegalArgumentException e) {
+                        String msg = String.format("The specified format was an invalid"
+                                + "date time format: %s", formatText);
+                        throw new JsonMappingException(p, msg, e);
+                    }
+            }
+        } else {
+            String msg = String.format("The type specified doesn't support format configuration: "
+                    + "%s", type);
+            throw new JsonMappingException(p, msg);
+        }
+
+        return String.format("[%s] %s", type.getTypeSignature().toString(),
+                formatText);
     }
 }

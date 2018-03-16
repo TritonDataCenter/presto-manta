@@ -1,0 +1,16 @@
+{
+  "name": "logical-table-1",
+  "rootPath": "/user/stor/json-examples",
+  "dataFileType": "NDJSON",
+  "columns":[
+    {"column":"name","type":"string"},
+    {"column":"timestamp-iso8601","type":"timestamp","format":"iso-8601"},
+    {"column":"timestamp-epoch-seconds","type":"timestamp","format":"epoch-seconds"},
+    {"column":"timestamp-epoch-milliseconds","type":"timestamp","format":"epoch-milliseconds"},
+    {"column":"timestamp-epoch-days","type":"timestamp","format":"epoch-days"},
+    {"column":"timestamp-default","type":"timestamp"},
+    {"column":"date","type":"date","format":"yyyy-MM-dd"},
+    {"column":"count","type":"int"},
+    {"column":"properties","type":"json"}
+  ]
+}

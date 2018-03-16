@@ -13,7 +13,9 @@ import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
 import com.facebook.presto.spi.block.MapBlock;
 import com.facebook.presto.spi.block.SingleMapBlock;
+import com.facebook.presto.spi.type.DateType;
 import com.facebook.presto.spi.type.MapType;
+import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -22,6 +24,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Closeables;
@@ -42,9 +45,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.SocketTimeoutException;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -73,6 +80,17 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
     private static final JsonNode NULL_NODE = NullNode.instance;
 
+    private static final String[] NUMERIC_TIME_FORMATS = new String[] {
+            "epoch-milliseconds",
+            "epoch-seconds",
+            "epoch-days"
+    };
+
+    static {
+        // Sort array so that a binary search can be performed
+        Arrays.sort(NUMERIC_TIME_FORMATS);
+    }
+
     private final List<MantaColumn> columns;
     private Long totalBytes;
     private long lines = 0L;
@@ -86,7 +104,13 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final String objectPath;
     private final ObjectReader streamingReader;
 
-    private final Map<String, DateTimeFormatter> dateFormats = new HashMap<>();
+    private final Map<String, DateTimeFormatter> parseFormats = new HashMap<>();
+
+    {
+        parseFormats.put("[timestamp] iso-8601", DateTimeFormatter.ISO_INSTANT);
+        parseFormats.put("[date] iso-8601", DateTimeFormatter.ISO_INSTANT);
+    }
+
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -106,6 +130,8 @@ public class MantaJsonRecordCursor implements RecordCursor {
                                  final ObjectReader streamingReader) {
         this.streamRecreator = streamRecreator;
         this.columns = columns;
+        populateColumnDateTimeFormats();
+
         this.objectPath = objectPath;
         this.totalBytes = totalBytes;
         this.streamingReader = streamingReader;
@@ -138,6 +164,50 @@ public class MantaJsonRecordCursor implements RecordCursor {
             me.setContextValue("objectPath", objectPath);
             me.setContextValue("bytePosition", in.getCount());
             throw me;
+        }
+    }
+
+    private void populateColumnDateTimeFormats() {
+        for (MantaColumn c : this.columns) {
+            final Type type = c.getType();
+
+            if (DateType.DATE.equals(type) || TimestampType.TIMESTAMP.equals(type)) {
+                final String extraInfo = c.getExtraInfo();
+
+                if (StringUtils.isBlank(extraInfo)) {
+                    continue;
+                }
+
+                final String pattern = StringUtils.substringAfter(extraInfo, "] ");
+
+                if (pattern.isEmpty()) {
+                    String msg = "The pattern for a date time value is invalid";
+                    MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg);
+                    me.setContextValue("column", c.getName());
+                    me.setContextValue("columnExtraInfo", c.getExtraInfo());
+                    me.setContextValue("pattern", pattern);
+                    me.setContextValue("objectPath", objectPath);
+                    throw me;
+                }
+
+                // Skip simple integer based time formats because they aren't parsed using
+                // a DateTimeFormatter
+                if (Arrays.binarySearch(NUMERIC_TIME_FORMATS, pattern) >= 0) {
+                    continue;
+                }
+
+                try {
+                    parseFormats.computeIfAbsent(extraInfo, s -> DateTimeFormatter.ofPattern(pattern));
+                } catch (IllegalArgumentException e) {
+                    String msg = "There was a problem parsing a date time value";
+                    MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
+                    me.setContextValue("column", c.getName());
+                    me.setContextValue("columnExtraInfo", c.getExtraInfo());
+                    me.setContextValue("pattern", pattern);
+                    me.setContextValue("objectPath", objectPath);
+                    throw me;
+                }
+            }
         }
     }
 
@@ -262,7 +332,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
         switch (type) {
             case "timestamp":
-                return getTimestampFromLong(value);
+                return getTimestamp(value, column);
             case "date":
                 return getDate(value, column);
             default:
@@ -273,14 +343,54 @@ public class MantaJsonRecordCursor implements RecordCursor {
     /**
      * Reads the long value from a json numeric property as a
      * long representing a timestamp. By default we read as
-     * epoch milliseconds. Extenders of this class may choose
-     * to convert from epoch seconds.
+     * epoch milliseconds.
      *
      * @param value json node to read long value from
+     * @param column column associated with node
      * @return long representing epoch milliseconds
      */
-    protected long getTimestampFromLong(final JsonNode value) {
-        return value.longValue();
+    @VisibleForTesting
+    long getTimestamp(final JsonNode value, final MantaColumn column) {
+        final String extraInfo = column.getExtraInfo();
+
+        if (StringUtils.isBlank(extraInfo)) {
+            return value.longValue();
+        }
+
+        try {
+            switch (extraInfo) {
+                case "[timestamp] epoch-milliseconds":
+                    return value.longValue();
+                case "[timestamp] epoch-seconds":
+                    final long millisecondAdjustmentFactor = 1_000L;
+                    return value.longValue() * millisecondAdjustmentFactor;
+                case "[timestamp] epoch-days":
+                    return LocalDate.ofEpochDay(value.longValue())
+                            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+                default:
+                    if (value.isTextual()) {
+                        final DateTimeFormatter format = parseFormats.get(extraInfo);
+                        Objects.requireNonNull(format);
+
+                        final TemporalAccessor temporal = format.parse(value.asText());
+                        return Instant.from(temporal).toEpochMilli();
+                    } else if (value.isNumber()) {
+                        return value.longValue();
+                    } else {
+                        String msg = "Unable to parse node as timestamp - unknown format";
+                        throw new IllegalArgumentException(msg);
+                    }
+            }
+        } catch (RuntimeException e) {
+            String msg = "There was a problem parsing a date time value";
+            MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
+            me.setContextValue("column", column.getName());
+            me.setContextValue("columnExtraInfo", column.getExtraInfo());
+            me.setContextValue("input", value.toString());
+            me.setContextValue("line", lines);
+            me.setContextValue("objectPath", objectPath);
+            throw me;
+        }
     }
 
     /**
@@ -288,27 +398,57 @@ public class MantaJsonRecordCursor implements RecordCursor {
      *
      * @param value parsed JSON node value
      * @param column column associated with node
-     * @return date as represented in the number of milliseconds from
+     * @return date as represented in the number of days from
      *         1970-01-01T00:00:00 in UTC but time must be midnight in the
      *         local time zone
      */
-    protected long getDate(final JsonNode value, final MantaColumn column) {
-        final String pattern = StringUtils.substringAfter(
-                column.getExtraInfo(), "date ");
+    @VisibleForTesting
+    long getDate(final JsonNode value, final MantaColumn column) {
+        final String extraInfo = column.getExtraInfo();
 
-        final DateTimeFormatter format = dateFormats.computeIfAbsent(
-                pattern, s -> DateTimeFormatter.ofPattern(pattern));
+        if (StringUtils.isBlank(extraInfo)) {
+            return value.longValue();
+        }
 
         try {
-            final LocalDate date = LocalDate.parse(value.asText(), format);
-            return date.toEpochDay();
-        } catch (DateTimeParseException e) {
+            switch (extraInfo) {
+                case "[date] epoch-milliseconds":
+                    return Instant.ofEpochMilli(value.longValue())
+                            .atZone(ZoneOffset.UTC)
+                            .toLocalDate().toEpochDay();
+                case "[date] epoch-seconds":
+                    return Instant.ofEpochSecond(value.longValue())
+                            .atZone(ZoneOffset.UTC)
+                            .toLocalDate().toEpochDay();
+                case "[date] epoch-days":
+                    return value.longValue();
+                default:
+                    if (value.isTextual()) {
+                        final DateTimeFormatter format = parseFormats.get(extraInfo);
+                        Objects.requireNonNull(format);
+
+                        TemporalAccessor temporal = format.parse(value.asText());
+
+                        if (temporal.isSupported(ChronoField.EPOCH_DAY)) {
+                            return temporal.getLong(ChronoField.EPOCH_DAY);
+                        } else {
+                            return Instant.from(temporal).atOffset(ZoneOffset.UTC)
+                                    .toLocalDate().toEpochDay();
+                        }
+                    } else if (value.isNumber()) {
+                        // The default value is the epoch day count
+                        return value.longValue();
+                    } else {
+                        String msg = "Unable to parse node as timestamp - unknown format";
+                        throw new IllegalArgumentException(msg);
+                    }
+            }
+        } catch (RuntimeException e) {
             String msg = "There was a problem parsing a date value";
-            MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg);
+            MantaPrestoFileFormatException me = new MantaPrestoFileFormatException(msg, e);
             me.setContextValue("column", column.getName());
             me.setContextValue("columnExtraInfo", column.getExtraInfo());
             me.setContextValue("input", value.toString());
-            me.setContextValue("datePattern", pattern);
             me.setContextValue("line", lines);
             me.setContextValue("objectPath", objectPath);
             throw me;

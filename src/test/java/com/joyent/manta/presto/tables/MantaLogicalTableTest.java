@@ -7,11 +7,18 @@
  */
 package com.joyent.manta.presto.tables;
 
+import com.facebook.presto.spi.type.DateType;
+import com.facebook.presto.spi.type.IntegerType;
+import com.facebook.presto.spi.type.TimestampType;
+import com.facebook.presto.spi.type.VarcharType;
+import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Injector;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoTestUtils;
+import com.joyent.manta.presto.column.MantaColumn;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -19,6 +26,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -154,6 +162,33 @@ public class MantaLogicalTableTest {
                     MantaDataFileType.NDJSON);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
+        }
+    }
+
+    public void canDeserializeFromJsonWithSpecifiedColumnsAndFormats() throws IOException {
+        final String resourcePath = basePath + "with-columns-and-format.json";
+
+        final List<MantaColumn> expectedColumns = ImmutableList.of(
+                new MantaColumn("name", VarcharType.VARCHAR, null),
+                new MantaColumn("timestamp-iso8601", TimestampType.TIMESTAMP, null, "[timestamp] iso-8601", false, null),
+                new MantaColumn("timestamp-epoch-seconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-seconds", false, null),
+                new MantaColumn("timestamp-epoch-milliseconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-milliseconds", false, null),
+                new MantaColumn("timestamp-epoch-days", TimestampType.TIMESTAMP, null, "[timestamp] epoch-days", false, null),
+                new MantaColumn("timestamp-default", TimestampType.TIMESTAMP, null),
+                new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false, null),
+                new MantaColumn("count", IntegerType.INTEGER, null),
+                new MantaColumn("properties", JsonType.JSON, null)
+        );
+
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
+                    "/user/stor/json-examples",
+                    MantaDataFileType.NDJSON,
+                    Optional.empty(),
+                    Optional.of(expectedColumns));
+            MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
+            Assert.assertEquals(expected, actual);
+            Assert.assertEquals(expectedColumns, actual.getColumns().get());
         }
     }
 
