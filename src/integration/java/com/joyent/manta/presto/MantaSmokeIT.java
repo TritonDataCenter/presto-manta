@@ -146,8 +146,7 @@ public class MantaSmokeIT {
     public void canSelectAllFromLineitemTable() throws SQLException {
         String sql = "SELECT * "
                 + "FROM ${schema}.lineitem "
-                + "ORDER BY orderkey, partkey, suppkey, linenumber, "
-                + "shipdate, commitdate, receiptdate";
+                + "ORDER BY orderkey, partkey, suppkey, linenumber";
 
         assertQuery(interpolateSchemaInSql(sql, "manta.default"),
                 interpolateSchemaInSql(sql, "tpch.tiny"));

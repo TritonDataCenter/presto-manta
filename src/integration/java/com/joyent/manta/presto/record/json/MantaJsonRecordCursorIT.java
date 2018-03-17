@@ -15,6 +15,8 @@ import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.RecordPageSource;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.block.Block;
+import com.facebook.presto.spi.connector.ConnectorPartitionHandle;
+import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.type.BigintType;
 import com.facebook.presto.spi.type.DateType;
@@ -54,6 +56,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.joyent.manta.presto.test.MantaPrestoIntegrationTestUtils.setupConfiguration;
+import static org.mockito.Mockito.mock;
 
 @Test
 public class MantaJsonRecordCursorIT {
@@ -216,13 +219,17 @@ public class MantaJsonRecordCursorIT {
         ConnectorTransactionHandle transactionHandle = new TestingTransactionHandle(UUID.randomUUID());
         MantaSplitManager splitManager = injector.getInstance(MantaSplitManager.class);
         MantaTableLayoutHandle tableLayoutHandle = new MantaTableLayoutHandle(schemaTableName);
+        ConnectorSplitManager.SplitSchedulingStrategy splitSchedulingStrategy = ConnectorSplitManager.SplitSchedulingStrategy.GROUPED_SCHEDULING;
+        ConnectorPartitionHandle partitionHandle = mock(ConnectorPartitionHandle.class);
+
         ConnectorSplit split;
 
-        try (ConnectorSplitSource splitSource = splitManager.getSplits(transactionHandle, session, tableLayoutHandle)) {
-            List<ConnectorSplit> splits = splitSource.getNextBatch(10).get();
-            Assert.assertEquals(splits.size(), 1,
+        try (ConnectorSplitSource splitSource = splitManager.getSplits(transactionHandle, session, tableLayoutHandle, splitSchedulingStrategy)) {
+            ConnectorSplitSource.ConnectorSplitBatch splitBatch =
+                    splitSource.getNextBatch(partitionHandle, 10).get();
+            Assert.assertEquals(splitBatch.getSplits().size(), 1,
                     "There should be only one split for this test");
-            split = splits.get(0);
+            split = splitBatch.getSplits().get(0);
         } catch (InterruptedException | ExecutionException e) {
             throw new AssertionError("Problem processing split source", e);
         }

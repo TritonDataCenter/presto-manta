@@ -9,13 +9,13 @@ package com.joyent.manta.presto;
 
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorSplitSource;
+import com.facebook.presto.spi.connector.ConnectorPartitionHandle;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Stream;
@@ -61,7 +61,7 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
     }
 
     @Override
-    public CompletableFuture<List<ConnectorSplit>> getNextBatch(final int maxSize) {
+    public CompletableFuture<ConnectorSplitBatch> getNextBatch(final ConnectorPartitionHandle partitionHandle, final int maxSize) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 final ImmutableList.Builder<ConnectorSplit> list = new ImmutableList.Builder<>();
@@ -77,7 +77,7 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
                     count.increment();
                 }
 
-                return list.build();
+                return new ConnectorSplitBatch(list.build(), !iterator.hasNext());
             } catch (Exception e) {
                 LOG.error("Error getting next batch of ConnectorSplit objects", e);
                 throw e;
