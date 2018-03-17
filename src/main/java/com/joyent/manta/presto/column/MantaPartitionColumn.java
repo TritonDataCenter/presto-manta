@@ -41,7 +41,7 @@ public class MantaPartitionColumn extends MantaColumn {
                                 final String extraInfo,
                                 final boolean hidden,
                                 final String displayName) {
-        super(name, type, comment, extraInfo, hidden, displayName);
+        super(name, type, comment, extraInfo, hidden);
         this.index = index;
     }
 
@@ -64,7 +64,7 @@ public class MantaPartitionColumn extends MantaColumn {
                                 @JsonProperty("extraInfo") final String extraInfo,
                                 @JsonProperty("hidden") final boolean hidden,
                                 @JsonProperty("displayName") final String displayName) {
-        super(name, typeString, comment, extraInfo, hidden, displayName);
+        super(name, typeString, comment, extraInfo, hidden);
         this.index = index;
     }
 
@@ -106,7 +106,6 @@ public class MantaPartitionColumn extends MantaColumn {
                 .append("comment", getComment())
                 .append("extraInfo", getExtraInfo())
                 .append("hidden", isHidden())
-                .append("displayName", getDisplayName())
                 .toString();
     }
 }

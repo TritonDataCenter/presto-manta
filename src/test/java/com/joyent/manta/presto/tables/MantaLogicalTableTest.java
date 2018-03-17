@@ -170,12 +170,12 @@ public class MantaLogicalTableTest {
 
         final List<MantaColumn> expectedColumns = ImmutableList.of(
                 new MantaColumn("name", VarcharType.VARCHAR, null),
-                new MantaColumn("timestamp-iso8601", TimestampType.TIMESTAMP, null, "[timestamp] iso-8601", false, null),
-                new MantaColumn("timestamp-epoch-seconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-seconds", false, null),
-                new MantaColumn("timestamp-epoch-milliseconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-milliseconds", false, null),
-                new MantaColumn("timestamp-epoch-days", TimestampType.TIMESTAMP, null, "[timestamp] epoch-days", false, null),
+                new MantaColumn("timestamp-iso8601", TimestampType.TIMESTAMP, null, "[timestamp] iso-8601", false),
+                new MantaColumn("timestamp-epoch-seconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-seconds", false),
+                new MantaColumn("timestamp-epoch-milliseconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-milliseconds", false),
+                new MantaColumn("timestamp-epoch-days", TimestampType.TIMESTAMP, null, "[timestamp] epoch-days", false),
                 new MantaColumn("timestamp-default", TimestampType.TIMESTAMP, null),
-                new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false, null),
+                new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false),
                 new MantaColumn("count", IntegerType.INTEGER, null),
                 new MantaColumn("properties", JsonType.JSON, null)
         );

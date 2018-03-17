@@ -306,7 +306,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 final String extraInfo = readFormat(objectNode, p, type);
 
                 MantaColumn column = new MantaColumn(
-                        name, type, null, extraInfo, false, displayName);
+                        name, type, null, extraInfo, false);
                 columnBuilder.add(column);
             }
 

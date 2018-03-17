@@ -33,7 +33,7 @@ public class MantaTelegrafColumnLister implements ColumnLister {
      */
     private static final List<MantaColumn> COLUMNS = ImmutableList.of(
             new MantaColumn("timestamp", TimestampType.TIMESTAMP, "Timestamp without TZ",
-                    "[timestamp] epoch-seconds", false, null),
+                    "[timestamp] epoch-seconds", false),
             new MantaColumn("tags", MAP_STRING_STRING, "Associative array of tags"),
             new MantaColumn("name", VarcharType.VARCHAR, "Name of metric"),
             new MantaColumn("fields", MAP_STRING_DOUBLE, "Associative array of metric fields")

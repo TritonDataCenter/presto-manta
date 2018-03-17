@@ -40,7 +40,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseEpochMillisecondsAsTimestamp() {
         final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
-                null, "[timestamp] epoch-milliseconds", false, null);
+                null, "[timestamp] epoch-milliseconds", false);
         final long expected = 1521226897201L; // 2018-03-16T19:01:37.201Z
         final JsonNode node = new LongNode(expected);
         final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
@@ -51,7 +51,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseEpochSecondsAsTimestamp() {
         final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
-                null, "[timestamp] epoch-seconds", false, null);
+                null, "[timestamp] epoch-seconds", false);
         final long epochSeconds = 1521226897; // 2018-03-16T19:01:37Z
         final long expected = 1521226897000L;
 
@@ -64,7 +64,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseEpochDaysAsTimestamp() {
         final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
-                null, "[timestamp] epoch-days", false, null);
+                null, "[timestamp] epoch-days", false);
         final long epochDays = 17606; // 2018-03-16T00:00:00Z
         final long expected = 1521158400000L;
 
@@ -88,7 +88,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseIso8601AsTimestamp() {
         final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
-                null, "[timestamp] iso-8601", false, null);
+                null, "[timestamp] iso-8601", false);
         final Instant instant = Instant.parse("2018-03-16T19:01:37.201Z");
         final long expected = 1521226897201L; // 2018-03-16T19:01:37.201Z
 
@@ -101,7 +101,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseHTTPTimestampAsTimestamp() {
         final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
-                null, "[timestamp] EEE, dd MMM yyyy HH:mm:ss zzz", false, null);
+                null, "[timestamp] EEE, dd MMM yyyy HH:mm:ss zzz", false);
         final String timestamp = "Fri, 16 Mar 2018 19:01:37 GMT";
         final long expected = 1521226897000L; // 2018-03-16T19:01:37Z
 
@@ -116,7 +116,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseEpochMillisecondsAsDate() {
         final MantaColumn column = new MantaColumn("date", DateType.DATE,
-                null, "[date] epoch-milliseconds", false, null);
+                null, "[date] epoch-milliseconds", false);
         final long epochMillisDate = 1521226897201L; // 2018-03-16T19:01:37.201Z
         final long expected = LocalDate.parse("2018-03-16",
                 DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochDay();
@@ -129,7 +129,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseEpochDaysAsDate() {
         final MantaColumn column = new MantaColumn("date", DateType.DATE,
-                null, "[date] epoch-days", false, null);
+                null, "[date] epoch-days", false);
         final long expected = 17606; // 2018-03-16
         final JsonNode node = new LongNode(expected);
         final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
@@ -151,7 +151,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseIso8601AsDate() {
         final MantaColumn column = new MantaColumn("date", DateType.DATE,
-                null, "[date] iso-8601", false, null);
+                null, "[date] iso-8601", false);
         final Instant instant = Instant.parse("2018-03-16T19:01:37.201Z");
         final long expected = 17606; // 2018-03-16T00:00:00Z
 
@@ -164,7 +164,7 @@ public class MantaJsonRecordCursorTest {
 
     public void canParseYYYYMMDDAsDate() {
         final MantaColumn column = new MantaColumn("date", DateType.DATE,
-                null, "[date] yyyy-MM-dd", false, null);
+                null, "[date] yyyy-MM-dd", false);
         final String date = "2018-03-16";
         final long expected = 17606; // 2018-03-16T00:00:00Z
 

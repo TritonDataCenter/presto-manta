@@ -252,7 +252,7 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 return null;
         }
 
-        return new MantaColumn(key, type, null, extraInfo, false, null);
+        return new MantaColumn(key, type, null, extraInfo, false);
     }
 
     /**

@@ -159,7 +159,7 @@ public class MantaJsonRecordCursorDataFileTest {
                 new ImmutableList.Builder<>();
 
         columns.add(new MantaColumn("date", DATE, "date string",
-                "[date] yyyy-MM-dd", false, null));
+                "[date] yyyy-MM-dd", false));
         columns.add(new MantaColumn("name", VARCHAR, "string"));
         columns.add(new MantaColumn("article_id", VARCHAR, "string"));
         columns.add(new MantaColumn("publisher_id", VARCHAR, "string"));
