@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import com.joyent.manta.config.ConfigContext;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
@@ -108,8 +110,6 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg, e);
         }
 
-        // TODO: Check for duplicate parition definitions
-
         final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
                 readPartitionDefinition(objectNode, p);
 
@@ -148,19 +148,32 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             final LinkedHashSet<String> directoryFilterPartitions =
                     readOrderedSet(partitioning.get("directoryPartitions"),
                             "directoryPartitions", p);
-            final LinkedHashSet<String> filterPartitions =
+            final LinkedHashSet<String> fileFilterPartitions =
                     readOrderedSet(partitioning.get("partitions"), "segments", p);
+
+            final Sets.SetView<String> partitionNameDuplicates =
+                    Sets.intersection(directoryFilterPartitions, fileFilterPartitions);
+
+            if (!partitionNameDuplicates.isEmpty()) {
+                final String duplicates = Joiner.on(", ").join(partitionNameDuplicates);
+
+                String msg = String.format("Duplicate names found between "
+                                + "directoryPartitions and partitions. Each partition "
+                                + "name must be unique. Duplicates: %s",
+                        duplicates);
+                throw new JsonMappingException(p, msg);
+            }
 
             /* If all values are empty/default, then it makes sense to return
              * back an empty Optional.empty() because functionally there is
              * no partition specified. */
             if (directoryFilterRegex == null && filterRegex == null
-                    && directoryFilterPartitions.isEmpty() && filterPartitions.isEmpty()) {
+                    && directoryFilterPartitions.isEmpty() && fileFilterPartitions.isEmpty()) {
                 return Optional.empty();
             } else {
                 return Optional.of(new MantaLogicalTablePartitionDefinition(
                         directoryFilterRegex, filterRegex, directoryFilterPartitions,
-                        filterPartitions));
+                        fileFilterPartitions));
             }
         } else {
             return Optional.empty();
