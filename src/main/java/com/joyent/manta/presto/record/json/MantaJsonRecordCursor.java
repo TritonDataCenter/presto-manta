@@ -22,8 +22,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
@@ -52,6 +52,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -78,8 +79,6 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private static final Function<Map.Entry<String, JsonNode>, Double> JSON_DOUBLE_VALUE_EXTRACT_FUNCTION =
             entry -> entry.getValue().doubleValue();
 
-    private static final JsonNode NULL_NODE = NullNode.instance;
-
     private static final String[] NUMERIC_TIME_FORMATS = new String[] {
             "epoch-milliseconds",
             "epoch-seconds",
@@ -103,6 +102,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
     private final Supplier<MantaCountingInputStream> streamRecreator;
     private final String objectPath;
     private final ObjectReader streamingReader;
+    private final Map<String, String> partitionToMatchValue;
 
     private final Map<String, DateTimeFormatter> parseFormats = new HashMap<>();
 
@@ -128,6 +128,28 @@ public class MantaJsonRecordCursor implements RecordCursor {
                                  final Long totalBytes,
                                  final MantaCountingInputStream countingStream,
                                  final ObjectReader streamingReader) {
+        this(streamRecreator, columns, objectPath, totalBytes, countingStream, streamingReader,
+                Collections.emptyMap());
+    }
+
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param streamRecreator function used to recreate the underlying stream providing the JSON data
+     * @param columns list of columns in table
+     * @param objectPath path to object in Manta
+     * @param totalBytes total number of bytes in source object
+     * @param countingStream input stream that counts the number of bytes processed
+     * @param streamingReader streaming json deserialization reader
+     * @param partitionToMatchValue map of column to user specified partition value
+     */
+    public MantaJsonRecordCursor(final Supplier<MantaCountingInputStream> streamRecreator,
+                                 final List<MantaColumn> columns,
+                                 final String objectPath,
+                                 final Long totalBytes,
+                                 final MantaCountingInputStream countingStream,
+                                 final ObjectReader streamingReader,
+                                 final Map<String, String> partitionToMatchValue) {
         this.streamRecreator = streamRecreator;
         this.columns = columns;
         populateColumnDateTimeFormats();
@@ -136,6 +158,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
         this.totalBytes = totalBytes;
         this.streamingReader = streamingReader;
         this.countingStream = countingStream;
+        this.partitionToMatchValue = partitionToMatchValue;
         this.lineItr = buildLineIteratorFromStream(countingStream);
     }
 
@@ -552,16 +575,17 @@ public class MantaJsonRecordCursor implements RecordCursor {
 
         int count = 0;
         for (MantaColumn column : columns) {
-            /* Don't parse or process hidden columns because they are being used
-             * to partition based on file or directory name. */
-            if (column.isHidden()) {
-                map.put(count++, NULL_NODE);
-                continue;
-            }
-
             final String columnName = Objects.requireNonNull(column.getName(),
                     "Column name is null");
-            final JsonNode node = object.get(columnName);
+
+            final JsonNode node;
+
+            final String partitionMatchValue = partitionToMatchValue.get(column.getName());
+            if (partitionMatchValue != null) {
+                node = new TextNode(partitionMatchValue);
+            } else {
+                node = object.get(columnName);
+            }
 
             if (node == null) {
                 String msg = "No column found with the specified name";

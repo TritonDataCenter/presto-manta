@@ -11,9 +11,12 @@ import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.HostAddress;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableMap;
+import com.joyent.manta.presto.column.MantaPartitionColumn;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
@@ -109,6 +112,32 @@ public class MantaSplit implements ConnectorSplit {
     @Override
     public Object getInfo() {
         return this;
+    }
+
+    /**
+     * @return Generates a new Map correlating columns to match values for all predicates
+     */
+    public Map<String, String> generateColumnToMatchValueMapping() {
+        ImmutableMap.Builder<String, String> map = new ImmutableMap.Builder<>();
+
+        appendPredicateValues(map, filePartitionPredicate);
+        appendPredicateValues(map, dirPartitionPredicate);
+
+        return map.build();
+    }
+
+    private static void appendPredicateValues(final ImmutableMap.Builder<String, String> map,
+                                              final MantaSplitPartitionPredicate predicate) {
+        if (predicate == null) {
+            return;
+        }
+
+        final MantaPartitionColumn[] columns = predicate.getPartitionColumns();
+        final String[] values = predicate.getMatchValues();
+
+        for (int i = 0; i < columns.length; i++) {
+            map.put(columns[i].getName(), values[i]);
+        }
     }
 
     @Override

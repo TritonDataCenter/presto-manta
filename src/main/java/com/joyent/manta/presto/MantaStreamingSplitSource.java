@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Stream;
 
 /**
@@ -30,6 +31,8 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
 
     private final Iterator<MantaSplit> iterator;
     private final Stream<MantaObject> backingStream;
+    private final LongAdder count = new LongAdder();
+    private final String connectorId;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -49,6 +52,7 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
                                      final Stream<MantaObject> backingStream,
                                      final MantaSplitPartitionPredicate filePartitionPredicate,
                                      final MantaSplitPartitionPredicate dirPartitionPredicate) {
+        this.connectorId = connectorId;
         this.backingStream = backingStream;
         this.iterator = backingStream
                 .map(obj -> new MantaSplit(connectorId, schemaName, tableName,
@@ -63,7 +67,14 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
                 final ImmutableList.Builder<ConnectorSplit> list = new ImmutableList.Builder<>();
 
                 for (int i = 0; i < maxSize && iterator.hasNext(); i++) {
-                    list.add(iterator.next());
+                    final MantaSplit split = iterator.next();
+
+                    if (LOG.isTraceEnabled()) {
+                        LOG.trace("Created split: {}", split.getObjectPath());
+                    }
+
+                    list.add(split);
+                    count.increment();
                 }
 
                 return list.build();
@@ -76,6 +87,8 @@ public class MantaStreamingSplitSource implements ConnectorSplitSource {
 
     @Override
     public void close() {
+        LOG.debug("{} splits generated for query [connectorId={}]",
+                count.sumThenReset(), connectorId);
         backingStream.close();
     }
 
