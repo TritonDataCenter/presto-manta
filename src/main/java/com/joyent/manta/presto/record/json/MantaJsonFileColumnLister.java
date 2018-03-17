@@ -34,6 +34,8 @@ import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaSchemaTableName;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -93,6 +95,8 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
         private final MantaSchemaTableName tableName;
         private final MantaLogicalTable table;
 
+        private final Logger log = LoggerFactory.getLogger(ColumnListLoader.class);
+
         private ColumnListLoader(final MantaSchemaTableName tableName,
                                  final MantaLogicalTable table) {
             this.tableName = tableName;
@@ -101,12 +105,16 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
 
         @Override
         public List<MantaColumn> call() {
+            final ImmutableList.Builder<MantaColumn> columns =
+                    new ImmutableList.Builder<>();
+
+            log.trace("Columns are not explicitly defined - doing a best guess");
+
             final MantaObject first = firstObjectForTable(tableName, table);
             final String objectPath = first.getPath();
             final String firstLine = readFirstLine(objectPath);
 
             final ObjectNode objectNode = readObjectNode(firstLine, objectPath);
-            final ImmutableList.Builder<MantaColumn> columns = new ImmutableList.Builder<>();
             final Iterator<Map.Entry<String, JsonNode>> itr = objectNode.fields();
 
             while (itr.hasNext()) {
@@ -120,7 +128,6 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                     columns.add(column);
                 }
             }
-
             return columns.build();
         }
     }
@@ -149,8 +156,8 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                                          final MantaLogicalTable table,
                                          final ConnectorSession session) {
         final ColumnListLoader loader = new ColumnListLoader(tableName, table);
-
         try {
+
             return columnCache.get(session.getQueryId(), loader);
         } catch (ExecutionException e) {
             String msg = "Error loading column listing from JSON source";
@@ -228,9 +235,13 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 break;
             case STRING:
                 final String dateFormat = findDateFormat(key, val);
+
+                /* Nodes identified with a name beginning with certain keywords
+                 * will be parsed as date fields. This is our best effort to
+                 * guess what format the data is in. */
                 if (dateFormat != null) {
                     type = DateType.DATE;
-                    extraInfo = "date " + dateFormat;
+                    extraInfo = "[date] " + dateFormat;
                 } else {
                     type = VarcharType.VARCHAR;
                     extraInfo = "string";
@@ -241,9 +252,17 @@ public class MantaJsonFileColumnLister extends AbstractPeekingColumnLister {
                 return null;
         }
 
-        return new MantaColumn(key, type, extraInfo);
+        return new MantaColumn(key, type, null, extraInfo, false);
     }
 
+    /**
+     * Attempts to automatically parse a date node.
+     *
+     * @param key name of node
+     * @param val contents of node
+     * @return null if unable to identify node as date, otherwise a string column
+     *         with extraInfo used to identify the format of the date
+     */
     private String findDateFormat(final String key, final JsonNode val) {
         final String text = val.asText();
         for (String keyword : DATE_KEYWORDS) {

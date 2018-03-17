@@ -7,17 +7,27 @@
  */
 package com.joyent.manta.presto.tables;
 
+import com.facebook.presto.spi.type.DateType;
+import com.facebook.presto.spi.type.IntegerType;
+import com.facebook.presto.spi.type.TimestampType;
+import com.facebook.presto.spi.type.VarcharType;
+import com.facebook.presto.type.JsonType;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Injector;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoTestUtils;
+import com.joyent.manta.presto.column.MantaColumn;
 import org.junit.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Test
@@ -35,7 +45,7 @@ public class MantaLogicalTableTest {
         mapper = injector.getInstance(ObjectMapper.class);
     }
 
-    public void canSerializeFromJsonWithNullFilters() throws IOException {
+    public void canDeserializeFromJsonWithNullFilters() throws IOException {
         final String resourcePath = basePath + "null-filters.json";
 
         try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
@@ -47,33 +57,91 @@ public class MantaLogicalTableTest {
         }
     }
 
-    public void canSerializeFromJsonWithDirectoryFilter() throws IOException {
+    public void canDeserializeFromJsonWithDirectoryFilter() throws IOException {
         final String resourcePath = basePath + "with-directory-filters.json";
 
         try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTablePartitionDefinition partitionDefinition =
+                    new MantaLogicalTablePartitionDefinition(
+                            Pattern.compile("^.*dir2/.*\\.json$"), null,
+                            new LinkedHashSet<>(), new LinkedHashSet<>()
+                    );
+
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
                     MantaDataFileType.NDJSON,
-                    Pattern.compile("^.*dir2/.*\\.json$"), null);
+                    Optional.of(partitionDefinition));
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
     }
 
-    public void canSerializeFromJsonWithFilter() throws IOException {
+    public void canDeserializeFromJsonWithDirectoryFilterAndPartitions() throws IOException {
+        final String resourcePath = basePath + "with-directory-filters-partitions.json";
+        final LinkedHashSet<String> dirPartitions = new LinkedHashSet<>();
+        dirPartitions.add("year");
+        dirPartitions.add("month");
+        dirPartitions.add("day");
+
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTablePartitionDefinition partitionDefinition =
+                    new MantaLogicalTablePartitionDefinition(
+                            Pattern.compile("^/user/stor/json-examples/(.+)/(.+)/(.+)/.+\\.json$"), null,
+                            dirPartitions, new LinkedHashSet<>()
+                    );
+
+            MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
+                    "/user/stor/json-examples",
+                    MantaDataFileType.NDJSON,
+                    Optional.of(partitionDefinition));
+            MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
+            Assert.assertEquals(expected, actual);
+        }
+    }
+
+    public void canDeserializeFromJsonWithFilter() throws IOException {
         final String resourcePath = basePath + "with-file-filters.json";
 
         try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTablePartitionDefinition partitionDefinition =
+                    new MantaLogicalTablePartitionDefinition(
+                            null, Pattern.compile("^.*\\.json$"),
+                            new LinkedHashSet<>(), new LinkedHashSet<>()
+                    );
+
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
-                    MantaDataFileType.NDJSON,
-                    null, Pattern.compile("^.*\\.json$"));
+                    MantaDataFileType.NDJSON, Optional.of(partitionDefinition));
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
     }
 
-    public void canSerializeFromJsonWithMissingFilters() throws IOException {
+    public void canDeserializeFromJsonWithFilterAndPartitions() throws IOException {
+        final String resourcePath = basePath + "with-file-filters-partitions.json";
+        final LinkedHashSet<String> partitions = new LinkedHashSet<>();
+        partitions.add("year");
+        partitions.add("month");
+        partitions.add("day");
+
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTablePartitionDefinition partitionDefinition =
+                    new MantaLogicalTablePartitionDefinition(
+                            null, Pattern.compile(
+                                    "^/user/stor/json-examples/(.+)-(.+)-(.+)-.+\\.json$"),
+                            new LinkedHashSet<>(), partitions
+                    );
+
+            MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
+                    "/user/stor/json-examples",
+                    MantaDataFileType.NDJSON,
+                    Optional.of(partitionDefinition));
+            MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
+            Assert.assertEquals(expected, actual);
+        }
+    }
+
+    public void canDeserializeFromJsonWithMissingFilters() throws IOException {
         final String resourcePath = basePath + "missing-filters.json";
 
         try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
@@ -82,6 +150,45 @@ public class MantaLogicalTableTest {
                     MantaDataFileType.NDJSON);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
+        }
+    }
+
+    public void canDeserializeFromJsonWithEmptyFilters() throws IOException {
+        final String resourcePath = basePath + "empty-filters.json";
+
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
+                    "/user/stor/json-examples",
+                    MantaDataFileType.NDJSON);
+            MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
+            Assert.assertEquals(expected, actual);
+        }
+    }
+
+    public void canDeserializeFromJsonWithSpecifiedColumnsAndFormats() throws IOException {
+        final String resourcePath = basePath + "with-columns-and-format.json";
+
+        final List<MantaColumn> expectedColumns = ImmutableList.of(
+                new MantaColumn("name", VarcharType.VARCHAR, null),
+                new MantaColumn("timestamp-iso8601", TimestampType.TIMESTAMP, null, "[timestamp] iso-8601", false),
+                new MantaColumn("timestamp-epoch-seconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-seconds", false),
+                new MantaColumn("timestamp-epoch-milliseconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-milliseconds", false),
+                new MantaColumn("timestamp-epoch-days", TimestampType.TIMESTAMP, null, "[timestamp] epoch-days", false),
+                new MantaColumn("timestamp-default", TimestampType.TIMESTAMP, null),
+                new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false),
+                new MantaColumn("count", IntegerType.INTEGER, null),
+                new MantaColumn("properties", JsonType.JSON, null)
+        );
+
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+            MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
+                    "/user/stor/json-examples",
+                    MantaDataFileType.NDJSON,
+                    Optional.empty(),
+                    Optional.of(expectedColumns));
+            MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
+            Assert.assertEquals(expected, actual);
+            Assert.assertEquals(expectedColumns, actual.getColumns().get());
         }
     }
 

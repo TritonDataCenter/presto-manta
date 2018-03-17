@@ -32,7 +32,8 @@ public class MantaTelegrafColumnLister implements ColumnLister {
      * Unmodifiable list of columns used in Telegraf data.
      */
     private static final List<MantaColumn> COLUMNS = ImmutableList.of(
-            new MantaColumn("timestamp", TimestampType.TIMESTAMP, "Timestamp without TZ"),
+            new MantaColumn("timestamp", TimestampType.TIMESTAMP, "Timestamp without TZ",
+                    "[timestamp] epoch-seconds", false),
             new MantaColumn("tags", MAP_STRING_STRING, "Associative array of tags"),
             new MantaColumn("name", VarcharType.VARCHAR, "Name of metric"),
             new MantaColumn("fields", MAP_STRING_DOUBLE, "Associative array of metric fields")

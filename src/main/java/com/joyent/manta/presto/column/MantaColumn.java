@@ -12,6 +12,7 @@ import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.type.Type;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.joyent.manta.presto.types.TypeUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 /**
@@ -22,16 +23,49 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 public class MantaColumn extends ColumnMetadata implements ColumnHandle {
     /**
      * Creates a new instance based on the specified parameters.
-     *
-     * @param name name of column
+     *  @param name name of column
      * @param type Presto type of column
+     * @param comment comment about column
      * @param extraInfo additional information about column (eg JSON data type)
+     * @param hidden flag indicating that column is hidden
+     */
+    public MantaColumn(final String name,
+                       final Type type,
+                       final String comment,
+                       final String extraInfo,
+                       final boolean hidden) {
+        super(name, type, comment, extraInfo, hidden);
+    }
+
+    /**
+     * Creates a new instance based on the specified parameters.
+     *  @param name name of column
+     * @param typeString Presto type of column
+     * @param comment comment about column
+     * @param extraInfo additional information about column (eg JSON data type)
+     * @param hidden flag indicating that column is hidden
      */
     @JsonCreator
     public MantaColumn(@JsonProperty("name") final String name,
-                       @JsonProperty("type") final Type type,
-                       @JsonProperty("extraInfo") final String extraInfo) {
-        super(name, type, null, extraInfo, false);
+                       @JsonProperty("type") final String typeString,
+                       @JsonProperty("comment") final String comment,
+                       @JsonProperty("extraInfo") final String extraInfo,
+                       @JsonProperty("hidden") final boolean hidden) {
+        super(name, TypeUtils.parseAndValidateTypeFromString(typeString),
+                comment, extraInfo, hidden);
+    }
+
+    /**
+     * Creates a new instance based on the specified parameters.
+     *
+     * @param name name of column
+     * @param type Presto type of column
+     * @param comment comment about column
+     */
+    public MantaColumn(final String name,
+                       final Type type,
+                       final String comment) {
+        this(name, type, comment, null, false);
     }
 
     @JsonProperty
@@ -40,10 +74,14 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
         return super.getName();
     }
 
-    @JsonProperty
     @Override
     public Type getType() {
         return super.getType();
+    }
+
+    @JsonProperty("type")
+    public String getTypeAsString() {
+        return super.getType().toString();
     }
 
     @JsonProperty
@@ -58,6 +96,7 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
         return super.getExtraInfo();
     }
 
+    @JsonProperty
     @Override
     public boolean isHidden() {
         return super.isHidden();
@@ -70,6 +109,7 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
                 .append("type", super.getType())
                 .append("comment", super.getComment())
                 .append("extraInfo", super.getExtraInfo())
+                .append("hidden", super.isHidden())
                 .toString();
     }
 }

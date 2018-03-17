@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Joyent, Inc. All rights reserved.
+ * Copyright (c) 2018, Joyent, Inc. All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,164 +7,186 @@
  */
 package com.joyent.manta.presto.record.json;
 
-import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.DateType;
+import com.facebook.presto.spi.type.TimestampType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.LongNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaObject;
 import com.joyent.manta.presto.MantaCountingInputStream;
 import com.joyent.manta.presto.column.MantaColumn;
-import io.airlift.slice.Slice;
-import org.junit.Assert;
-import org.testng.SkipException;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-import static com.facebook.presto.spi.type.DateType.DATE;
-import static com.facebook.presto.spi.type.IntegerType.INTEGER;
-import static com.facebook.presto.spi.type.VarcharType.VARCHAR;
-import static com.facebook.presto.type.JsonType.JSON;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @Test
 public class MantaJsonRecordCursorTest {
-    private static final boolean OUTPUT_ENABLED = false;
 
-    public void canParseJsonGZSampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.gz");
+    // TIMESTAMP PARSING
+
+    public void canParseEpochMillisecondsAsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null, "[timestamp] epoch-milliseconds", false);
+        final long expected = 1521226897201L; // 2018-03-16T19:01:37.201Z
+        final JsonNode node = new LongNode(expected);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
     }
 
-    public void canParseJsonHadoopSnappySampleRecordsWithoutAnError() throws IOException {
-        try {
-            canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.snappy");
-        } catch (UnsupportedOperationException e) {
-            throw new SkipException("Native libraries need to be loaded in "
-                    + "order to use decompression algorithm");
-        }
+    public void canParseEpochSecondsAsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null, "[timestamp] epoch-seconds", false);
+        final long epochSeconds = 1521226897; // 2018-03-16T19:01:37Z
+        final long expected = 1521226897000L;
+
+        final JsonNode node = new LongNode(epochSeconds);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
     }
 
-    public void canParseJsonXZSampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.xz");
+    public void canParseEpochDaysAsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null, "[timestamp] epoch-days", false);
+        final long epochDays = 17606; // 2018-03-16T00:00:00Z
+        final long expected = 1521158400000L;
+
+        final JsonNode node = new LongNode(epochDays);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
     }
 
-    public void canParseJsonBzip2SampleRecordsWithoutAnError() throws IOException {
-        canParseJsonSampleRecordsWithoutAnError("test-data/cursor/sample-data.ndjson.bz2");
+    public void canParseDefaultLongValueAsEpochMillisecondsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null);
+        final long expected = 1521226897201L; // 2018-03-16T19:01:37.201Z
+        final JsonNode node = new LongNode(expected);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
     }
 
-    @SuppressWarnings("Duplicates")
-    private void canParseJsonSampleRecordsWithoutAnError(final String testFile) throws IOException {
-        final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        List<MantaColumn> columns = buildColumnList();
+    public void canParseIso8601AsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null, "[timestamp] iso-8601", false);
+        final Instant instant = Instant.parse("2018-03-16T19:01:37.201Z");
+        final long expected = 1521226897201L; // 2018-03-16T19:01:37.201Z
 
-        final long totalBytes = 37782293;
+        final JsonNode node = new TextNode(instant.toString());
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
 
-        InputStream in = classLoader.getResourceAsStream(testFile);
-        MantaObject object = mock(MantaObject.class);
-        when(object.getPath()).thenReturn(testFile);
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
+    }
 
-        MantaCountingInputStream cin = new MantaCountingInputStream(in, object);
+    public void canParseHTTPTimestampAsTimestamp() {
+        final MantaColumn column = new MantaColumn("timestamp", TimestampType.TIMESTAMP,
+                null, "[timestamp] EEE, dd MMM yyyy HH:mm:ss zzz", false);
+        final String timestamp = "Fri, 16 Mar 2018 19:01:37 GMT";
+        final long expected = 1521226897000L; // 2018-03-16T19:01:37Z
+
+        final JsonNode node = new TextNode(timestamp);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getTimestamp(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    // DATE PARSING
+
+    public void canParseEpochMillisecondsAsDate() {
+        final MantaColumn column = new MantaColumn("date", DateType.DATE,
+                null, "[date] epoch-milliseconds", false);
+        final long epochMillisDate = 1521226897201L; // 2018-03-16T19:01:37.201Z
+        final long expected = LocalDate.parse("2018-03-16",
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochDay();
+        final JsonNode node = new LongNode(epochMillisDate);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getDate(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    public void canParseEpochDaysAsDate() {
+        final MantaColumn column = new MantaColumn("date", DateType.DATE,
+                null, "[date] epoch-days", false);
+        final long expected = 17606; // 2018-03-16
+        final JsonNode node = new LongNode(expected);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getDate(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    public void canParseDefaultLongValueAsEpochDaysDate() {
+        final MantaColumn column = new MantaColumn("date", DateType.DATE,
+                null);
+        final long expected = 17606; // 2018-03-16
+        final JsonNode node = new LongNode(expected);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getDate(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    public void canParseIso8601AsDate() {
+        final MantaColumn column = new MantaColumn("date", DateType.DATE,
+                null, "[date] iso-8601", false);
+        final Instant instant = Instant.parse("2018-03-16T19:01:37.201Z");
+        final long expected = 17606; // 2018-03-16T00:00:00Z
+
+        final JsonNode node = new TextNode(instant.toString());
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getDate(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    public void canParseYYYYMMDDAsDate() {
+        final MantaColumn column = new MantaColumn("date", DateType.DATE,
+                null, "[date] yyyy-MM-dd", false);
+        final String date = "2018-03-16";
+        final long expected = 17606; // 2018-03-16T00:00:00Z
+
+        final JsonNode node = new TextNode(date);
+        final MantaJsonRecordCursor instance = mockInstance(ImmutableList.of(column));
+
+        final long actual = instance.getDate(node, column);
+        Assert.assertEquals(actual, expected);
+    }
+
+    // UTILITY METHODS
+
+    private MantaJsonRecordCursor mockInstance(List<MantaColumn> columns) {
         MantaJsonDataFileObjectMapperProvider mapperProvider = new MantaJsonDataFileObjectMapperProvider();
         ObjectMapper mapper = mapperProvider.get();
+
+        MantaObject object = mock(MantaObject.class);
+        when(object.getPath()).thenReturn("/user/stor/file.json");
+        InputStream inputStream = new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8));
         ObjectReader streamingReader = mapper.readerFor(ObjectNode.class);
-
-        try (MantaJsonRecordCursor cursor = new MantaJsonRecordCursor(null,
-                columns, cin.getPath(), totalBytes, cin,
-                streamingReader)) {
-
-            final int columnLen = columns.size();
-            long line = 0L;
-            while (cursor.advanceNextPosition()) {
-                print("[");
-                printf("%06d", ++line);
-
-                for (int i = 0; i < columnLen; i++) {
-                    printf(" col-%d=", i);
-
-                    if (cursor.isNull(i)) {
-                        print("null");
-                        continue;
-                    }
-
-                    Type type = cursor.getType(i);
-                    Class<?> javaType = type.getJavaType();
-                    if (javaType == boolean.class) {
-                        final boolean val = cursor.getBoolean(i);
-
-                        print("boolean");
-                        printf(" (%b)", val);
-                    } else if (javaType == long.class) {
-                        final long val = cursor.getLong(i);
-
-                        print("long");
-                        printf(" (%d)", val);
-                    } else if (javaType == double.class) {
-                        final double val = cursor.getDouble(i);
-
-                        print("double");
-                        printf(" (%d)", val);
-                    } else if (javaType == Slice.class) {
-                        final String val = cursor.getSlice(i).toStringUtf8();
-                        Assert.assertNotNull(val);
-
-                        print("slice");
-                        printf(" (%s)", val);
-                    } else {
-                        final String val = cursor.getObject(i).toString();
-                        Assert.assertNotNull(val);
-
-                        print("object");
-                        printf(" (%s)", val);
-                    }
-                }
-
-                println("]");
-            }
-
-            Duration readTime = Duration.of(cursor.getReadTimeNanos(), ChronoUnit.NANOS);
-            System.err.printf("Read file [%s] in %d ms\n", testFile, readTime.toMillis());
-        }
-    }
-
-    private void print(final String s) {
-        if (OUTPUT_ENABLED) {
-            System.out.print(s);
-        }
-    }
-
-    private void printf(final String s, Object... args) {
-        if (OUTPUT_ENABLED) {
-            System.out.printf(s, args);
-        }
-    }
-
-    private void println(final String s) {
-        if (OUTPUT_ENABLED) {
-            System.out.println(s);
-        }
-    }
-
-    private List<MantaColumn> buildColumnList() {
-        ImmutableList.Builder<MantaColumn> columns =
-                new ImmutableList.Builder<>();
-
-        columns.add(new MantaColumn("date", DATE, "date yyyy-MM-dd"));
-        columns.add(new MantaColumn("name", VARCHAR, "string"));
-        columns.add(new MantaColumn("article_id", VARCHAR, "string"));
-        columns.add(new MantaColumn("publisher_id", VARCHAR, "string"));
-        columns.add(new MantaColumn("tracking_id", VARCHAR, "string"));
-        columns.add(new MantaColumn("count", INTEGER, "number"));
-        columns.add(new MantaColumn("resolution", VARCHAR, "string"));
-        columns.add(new MantaColumn("ad_unit", VARCHAR, "string"));
-        columns.add(new MantaColumn("properties", JSON, "jsonObject"));
-        columns.add(new MantaColumn("timestamp", INTEGER, "number"));
-
-        return columns.build();
+        return new MantaJsonRecordCursor(null, columns,
+                "", 0L, new MantaCountingInputStream(inputStream, object),
+                streamingReader);
     }
 }

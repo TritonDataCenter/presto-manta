@@ -42,6 +42,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -94,6 +95,9 @@ public class MantaTelegrafJsonRecordCursorIT {
 
         final ObjectNode node = new ObjectNode(JsonNodeFactory.instance);
         final long timestampSeconds = 1496275200;
+        final long timestampMilliseconds = Instant.ofEpochSecond(timestampSeconds)
+                .toEpochMilli();
+
         node.put("timestamp", timestampSeconds);
 
         {
@@ -113,8 +117,9 @@ public class MantaTelegrafJsonRecordCursorIT {
         }
 
         final Function<Block[], Void> assertion = blocks -> {
-            SqlTimestamp timestamp = (SqlTimestamp)TimestampType.TIMESTAMP.getObjectValue(session, blocks[0], 0);
-            Assert.assertEquals(timestamp.getMillisUtc(), timestampSeconds * 1_000L,
+            SqlTimestamp timestamp = (SqlTimestamp) TimestampType
+                    .TIMESTAMP.getObjectValue(session, blocks[0], 0);
+            Assert.assertEquals(timestamp.getMillisUtc(), timestampMilliseconds,
                     "Epoch seconds was not converted to epoch milliseconds");
 
             Map<String, String> tags = (Map<String, String>)MAP_STRING_STRING.getObjectValue(session, blocks[1], 0);

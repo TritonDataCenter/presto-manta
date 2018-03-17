@@ -19,10 +19,10 @@ import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
 import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
 import com.joyent.manta.presto.exceptions.MantaPrestoUncheckedIOException;
 import com.joyent.manta.presto.record.json.MantaJsonRecordCursor;
-import com.joyent.manta.presto.record.telegraf.MantaTelegrafJsonRecordCursor;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
@@ -41,6 +41,7 @@ public class MantaRecordSet implements RecordSet {
     private final MantaClient mantaClient;
     private final MantaDataFileType dataFileType;
     private final ObjectReader streamingReader;
+    private final Map<String, String> partitionToMachValue;
 
     private final Supplier<MantaCountingInputStream> streamRecreator = () -> {
         final MantaObjectInputStream in = buildSourceStream();
@@ -66,6 +67,7 @@ public class MantaRecordSet implements RecordSet {
         this.dataFileType = requireNonNull(split.getDataFileType(), "data file type is null");
         this.objectPath = requireNonNull(split.getObjectPath(), "object path is null");
         this.streamingReader = requireNonNull(streamingReader, "object streaming reader is null");
+        this.partitionToMachValue = split.generateColumnToMatchValueMapping();
 
         ImmutableList.Builder<Type> types = ImmutableList.builder();
         for (MantaColumn column : columns) {
@@ -87,11 +89,9 @@ public class MantaRecordSet implements RecordSet {
 
         switch (dataFileType) {
             case NDJSON:
-                return new MantaJsonRecordCursor(streamRecreator, columns, objectPath,
-                        totalBytes, mantaInputStream, streamingReader);
             case TELEGRAF_NDJSON:
-                return new MantaTelegrafJsonRecordCursor(streamRecreator, columns, objectPath,
-                        totalBytes, mantaInputStream, streamingReader);
+                return new MantaJsonRecordCursor(streamRecreator, columns, objectPath,
+                        totalBytes, mantaInputStream, streamingReader, partitionToMachValue);
             default:
                 String msg = "Can't create cursor for unsupported file type";
                 MantaPrestoIllegalArgumentException me = new MantaPrestoIllegalArgumentException(msg);

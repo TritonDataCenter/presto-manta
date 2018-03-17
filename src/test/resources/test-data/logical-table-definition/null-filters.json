@@ -2,6 +2,8 @@
   "name": "logical-table-1",
   "rootPath": "/user/stor/json-examples",
   "dataFileType": "NDJSON",
-  "directoryFilterRegex": "",
-  "filterRegex": ""
+  "partitioning": {
+    "directoryFilterRegex": null,
+    "filterRegex": null
+  }
 }

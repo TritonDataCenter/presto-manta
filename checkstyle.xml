@@ -186,9 +186,9 @@
         <!-- See http://checkstyle.sf.net/config_misc.html -->
         <module name="ArrayTypeStyle" />
         <module name="FinalParameters" />
-        <module name="TodoComment">
-            <property name="format" value="(TODO)|(FIXME)|(XXX)"/>
-        </module>
+        <!--<module name="TodoComment">-->
+            <!--<property name="format" value="(TODO)|(FIXME)|(XXX)"/>-->
+        <!--</module>-->
         <module name="UpperEll" />
     </module>
 </module>

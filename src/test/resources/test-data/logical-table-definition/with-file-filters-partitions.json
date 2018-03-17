@@ -1,0 +1,13 @@
+{
+  "name": "logical-table-1",
+  "rootPath": "/user/stor/json-examples",
+  "dataFileType": "NDJSON",
+  "partitioning":{
+    "filterRegex": "^/user/stor/json-examples/(.+)-(.+)-(.+)-.+\\.json$",
+    "partitions": [
+      "year",
+      "month",
+      "day"
+    ]
+  }
+}

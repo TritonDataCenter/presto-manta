@@ -60,6 +60,7 @@ public class MantaTableLayoutHandle implements ConnectorTableLayoutHandle {
         return tableName;
     }
 
+    @JsonProperty
     public TupleDomain<ColumnHandle> getPredicate() {
         return predicate;
     }
