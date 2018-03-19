@@ -98,6 +98,10 @@ public class MaterializedRowToObjectNodeIterator implements Iterator<ObjectNode>
                     instant, ZoneOffset.UTC).toLocalDate();
 
             node.putPOJO(column,  date.toString());
+        } else if (field.getClass().equals(java.time.LocalDate.class)) {
+            final LocalDate localDate = (LocalDate)field;
+
+            node.put(column, localDate.toEpochDay());
         } else {
             node.putPOJO(column, field);
         }

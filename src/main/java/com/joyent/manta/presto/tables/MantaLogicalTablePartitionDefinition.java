@@ -66,8 +66,8 @@ public class MantaLogicalTablePartitionDefinition {
     public MantaLogicalTablePartitionDefinition(
             @JsonProperty("directoryFilterRegex") final String directoryFilterRegexString,
             @JsonProperty("filterRegex") final String filterRegexString,
-            @JsonProperty("directoryFilterPartitions") final LinkedHashSet<String> directoryFilterPartitions,
-            @JsonProperty("filterPartitions") final LinkedHashSet<String> filterPartitions) {
+            @JsonProperty("directoryPartitions") final LinkedHashSet<String> directoryFilterPartitions,
+            @JsonProperty("partitions") final LinkedHashSet<String> filterPartitions) {
 
         if (StringUtils.isNotBlank(directoryFilterRegexString)) {
             this.directoryFilterRegex = Pattern.compile(directoryFilterRegexString);
@@ -126,14 +126,14 @@ public class MantaLogicalTablePartitionDefinition {
         return filterRegex;
     }
 
-    @JsonProperty
+    @JsonProperty("directoryPartitions")
     @JsonDeserialize(as = LinkedHashSet.class)
     @JsonSerialize(as = LinkedHashSet.class)
     public LinkedHashSet<String> getDirectoryFilterPartitions() {
         return directoryFilterPartitions;
     }
 
-    @JsonProperty
+    @JsonProperty("partitions")
     @JsonDeserialize(as = LinkedHashSet.class)
     @JsonSerialize(as = LinkedHashSet.class)
     public LinkedHashSet<String> getFilterPartitions() {
@@ -189,7 +189,7 @@ public class MantaLogicalTablePartitionDefinition {
         final String comment = String.format("%s partition match [%s] index [%d]",
                 partitionType, regex, index);
         return new MantaPartitionColumn(index, partitionName, VarcharType.VARCHAR, comment,
-                null, true, null);
+                null, true);
     }
 
     @Override

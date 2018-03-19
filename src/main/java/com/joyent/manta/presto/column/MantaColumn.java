@@ -49,7 +49,7 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
     public MantaColumn(@JsonProperty("name") final String name,
                        @JsonProperty("type") final String typeString,
                        @JsonProperty("comment") final String comment,
-                       @JsonProperty("extraInfo") final String extraInfo,
+                       @JsonProperty("format") final String extraInfo,
                        @JsonProperty("hidden") final boolean hidden) {
         super(name, TypeUtils.parseAndValidateTypeFromString(typeString),
                 comment, extraInfo, hidden);
@@ -90,7 +90,7 @@ public class MantaColumn extends ColumnMetadata implements ColumnHandle {
         return super.getComment();
     }
 
-    @JsonProperty
+    @JsonProperty("format")
     @Override
     public String getExtraInfo() {
         return super.getExtraInfo();

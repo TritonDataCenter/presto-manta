@@ -501,7 +501,7 @@ public class MantaJsonRecordCursor implements RecordCursor {
          */
         if (node.isTextual()) {
             text = node.asText();
-        } else if (node.isObject()) {
+        } else if (node.isObject() || node.isNumber()) {
             text = node.toString();
         } else {
             String msg = "Unsupported type passed as slice";

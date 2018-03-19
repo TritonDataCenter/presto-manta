@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 @Test
@@ -70,7 +69,7 @@ public class MantaLogicalTableTest {
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
                     MantaDataFileType.NDJSON,
-                    Optional.of(partitionDefinition));
+                    partitionDefinition);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
@@ -93,7 +92,7 @@ public class MantaLogicalTableTest {
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
                     MantaDataFileType.NDJSON,
-                    Optional.of(partitionDefinition));
+                    partitionDefinition);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
@@ -111,7 +110,7 @@ public class MantaLogicalTableTest {
 
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
-                    MantaDataFileType.NDJSON, Optional.of(partitionDefinition));
+                    MantaDataFileType.NDJSON, partitionDefinition);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
@@ -135,7 +134,7 @@ public class MantaLogicalTableTest {
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
                     MantaDataFileType.NDJSON,
-                    Optional.of(partitionDefinition));
+                    partitionDefinition);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
         }
@@ -184,11 +183,82 @@ public class MantaLogicalTableTest {
             MantaLogicalTable expected = new MantaLogicalTable("logical-table-1",
                     "/user/stor/json-examples",
                     MantaDataFileType.NDJSON,
-                    Optional.empty(),
-                    Optional.of(expectedColumns));
+                    null,
+                    expectedColumns);
             MantaLogicalTable actual = mapper.readValue(input, MantaLogicalTable.class);
             Assert.assertEquals(expected, actual);
-            Assert.assertEquals(expectedColumns, actual.getColumns().get());
+            Assert.assertEquals(expectedColumns, actual.getColumns());
+        }
+    }
+
+    public void canSerializeWithUnconfiguredMapperAndDeserializeWithCustomDeserializerMapper() throws IOException {
+        final ObjectMapper unconfiguredMapper = new ObjectMapper();
+        final ObjectMapper customizedMapper = mapper;
+
+        canSerializeAndDeserializeAllFieldsWithMapper(unconfiguredMapper, customizedMapper);
+    }
+
+    public void canSerializeWithUnconfiguredMapperAndDeserializeWithUnconfiguredMapper() throws IOException {
+        final ObjectMapper unconfiguredMapper = new ObjectMapper();
+
+        canSerializeAndDeserializeAllFieldsWithMapper(unconfiguredMapper, unconfiguredMapper);
+    }
+
+    public void canSerializeWithCustomMapperAndDeserializeWithUnconfiguredMapper() throws IOException {
+        final ObjectMapper unconfiguredMapper = new ObjectMapper();
+        final ObjectMapper customizedMapper = mapper;
+
+        canSerializeAndDeserializeAllFieldsWithMapper(customizedMapper, unconfiguredMapper);
+    }
+
+    public void canSerializeWithCustomMapperAndDeserializeWithCustomMapper() throws IOException {
+        final ObjectMapper customizedMapper = mapper;
+
+        canSerializeAndDeserializeAllFieldsWithMapper(customizedMapper, customizedMapper);
+    }
+
+    private static void canSerializeAndDeserializeAllFieldsWithMapper(final ObjectMapper serializeMapper,
+                                                                      final ObjectMapper deserializeMapper) throws IOException {
+
+
+        final Pattern directoryFilterRegex = Pattern.compile("^/user/stor/json-examples/(.+)/.+\\\\.json$");
+        final Pattern filterRegex = Pattern.compile("^/user/stor/json-examples/.+/(.+)-(.+)-(.+)-.+\\\\.json$");
+        final LinkedHashSet<String> directoryFilterPartitions = new LinkedHashSet<>();
+        directoryFilterPartitions.add("server");
+
+        final LinkedHashSet<String> filterPartitions = new LinkedHashSet<>();
+        filterPartitions.add("year");
+        filterPartitions.add("month");
+        filterPartitions.add("day");
+
+        final MantaLogicalTablePartitionDefinition partitionDefinition =
+                new MantaLogicalTablePartitionDefinition(directoryFilterRegex, filterRegex,
+                        directoryFilterPartitions, filterPartitions);
+        final List<MantaColumn> columns = ImmutableList.of(
+                new MantaColumn("name", VarcharType.VARCHAR, null),
+                new MantaColumn("timestamp-iso8601", TimestampType.TIMESTAMP, null, "[timestamp] iso-8601", false),
+                new MantaColumn("timestamp-epoch-seconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-seconds", false),
+                new MantaColumn("timestamp-epoch-milliseconds", TimestampType.TIMESTAMP, null, "[timestamp] epoch-milliseconds", false),
+                new MantaColumn("timestamp-epoch-days", TimestampType.TIMESTAMP, null, "[timestamp] epoch-days", false),
+                new MantaColumn("timestamp-default", TimestampType.TIMESTAMP, null),
+                new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false),
+                new MantaColumn("count", IntegerType.INTEGER, null),
+                new MantaColumn("properties", JsonType.JSON, null)
+        );
+
+        final MantaLogicalTable expected = new MantaLogicalTable(
+                "test-table", "/user/stor/root/path", MantaDataFileType.NDJSON,
+                partitionDefinition, columns);
+
+        final String json = serializeMapper.writerWithDefaultPrettyPrinter().writeValueAsString(expected);
+        final MantaLogicalTable actual = deserializeMapper.readValue(json, MantaLogicalTable.class);
+
+        try {
+            Assert.assertEquals(expected, actual);
+            Assert.assertEquals(columns, actual.getColumns());
+        } catch (AssertionError e) {
+            System.err.println(json);
+            throw e;
         }
     }
 

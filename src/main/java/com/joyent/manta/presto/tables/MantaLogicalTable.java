@@ -18,7 +18,6 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -48,12 +47,12 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
      * A regular expression for pre-filtering directories so that the contents
      * of the directories will not need to be listed.
      */
-    private final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition;
+    private final MantaLogicalTablePartitionDefinition partitionDefinition;
 
     /**
      * A JsonNode structure that contains the column definitions.
      */
-    private final Optional<List<MantaColumn>> columns;
+    private final List<MantaColumn> columns;
 
     /**
      * Creates a new instance based on the specified parameters.
@@ -68,8 +67,8 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
         this.tableName = tableName;
         this.rootPath = rootPath;
         this.dataFileType = dataFileType;
-        this.partitionDefinition = Optional.empty();
-        this.columns = Optional.empty();
+        this.partitionDefinition = null;
+        this.columns = null;
     }
     /**
      * Creates a new instance based on the specified parameters.
@@ -82,13 +81,14 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     public MantaLogicalTable(final String tableName,
                              final String rootPath,
                              final MantaDataFileType dataFileType,
-                             final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition) {
+                             final MantaLogicalTablePartitionDefinition partitionDefinition) {
         this.tableName = tableName;
         this.rootPath = rootPath;
         this.dataFileType = dataFileType;
         this.partitionDefinition = partitionDefinition;
-        this.columns = Optional.empty();
+        this.columns = null;
     }
+
     /**
      * Creates a new instance based on the specified parameters. This
      * constructor is typically used by JSON deserialization.
@@ -104,8 +104,8 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     public MantaLogicalTable(@JsonProperty("name") final String tableName,
                              @JsonProperty("rootPath") final String rootPath,
                              @JsonProperty("dataFileType") final MantaDataFileType dataFileType,
-                             @JsonProperty("partitionDefinition") final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition,
-                             @JsonProperty("columns") final Optional<List<MantaColumn>> columns) {
+                             @JsonProperty("partitioning") final MantaLogicalTablePartitionDefinition partitionDefinition,
+                             @JsonProperty("columns") final List<MantaColumn> columns) {
         this.tableName = Validate.notBlank(tableName, "table name must not be blank");
         this.rootPath = Validate.notBlank(rootPath, "root path must not be blank");
         this.dataFileType = Objects.requireNonNull(dataFileType, "data file type is null");
@@ -129,12 +129,12 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
     }
 
     @JsonProperty
-    public Optional<List<MantaColumn>> getColumns() {
+    public List<MantaColumn> getColumns() {
         return columns;
     }
 
-    @JsonProperty
-    public Optional<MantaLogicalTablePartitionDefinition> getPartitionDefinition() {
+    @JsonProperty("partitioning")
+    public MantaLogicalTablePartitionDefinition getPartitionDefinition() {
         return partitionDefinition;
     }
 
@@ -145,11 +145,11 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
      */
     @JsonIgnore
     public Predicate<? super MantaObject> directoryFilter() {
-        if (!partitionDefinition.isPresent()) {
+        if (partitionDefinition == null) {
             return mantaObject -> true;
         }
 
-        Pattern directoryFilterRegex = partitionDefinition.get().getDirectoryFilterRegex();
+        Pattern directoryFilterRegex = partitionDefinition.getDirectoryFilterRegex();
 
         if (directoryFilterRegex == null) {
             return mantaObject -> true;
@@ -166,11 +166,11 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
      */
     @JsonIgnore
     public Predicate<? super MantaObject> filter() {
-        if (!partitionDefinition.isPresent()) {
+        if (partitionDefinition == null) {
             return mantaObject -> true;
         }
 
-        Pattern filterRegex = partitionDefinition.get().getFilterRegex();
+        Pattern filterRegex = partitionDefinition.getFilterRegex();
 
         if (filterRegex == null) {
             return mantaObject -> true;
@@ -187,7 +187,7 @@ public class MantaLogicalTable implements Comparable<MantaLogicalTable> {
                 .append("rootPath", rootPath)
                 .append("dataFileType", dataFileType);
 
-        if (partitionDefinition.isPresent()) {
+        if (partitionDefinition != null) {
             builder.append("partitionDefinition", partitionDefinition);
         } else {
             builder.append("partitionDefinition", "<empty>");

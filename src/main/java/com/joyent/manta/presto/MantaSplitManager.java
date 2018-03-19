@@ -79,9 +79,9 @@ public class MantaSplitManager implements ConnectorSplitManager {
         final MantaSplitPartitionPredicate dirPartitionPredicate;
 
         if (predicate != null && predicate.getDomains().isPresent()
-                && table.getPartitionDefinition().isPresent()) {
+                && table.getPartitionDefinition() != null) {
             final Map<ColumnHandle, Domain> domains = predicate.getDomains().get();
-            final MantaLogicalTablePartitionDefinition partitionDefinition = table.getPartitionDefinition().get();
+            final MantaLogicalTablePartitionDefinition partitionDefinition = table.getPartitionDefinition();
 
             filePartitionPredicate = createPartitionPredicate(
                     partitionDefinition.getFilterRegex(),

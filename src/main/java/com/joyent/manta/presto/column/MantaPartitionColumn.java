@@ -32,15 +32,13 @@ public class MantaPartitionColumn extends MantaColumn {
      * @param comment comment about column
      * @param extraInfo additional information about column (eg JSON data type)
      * @param hidden flag indicating that column is hidden
-     * @param displayName string to use in table as presented to the user
      */
     public MantaPartitionColumn(final int index,
                                 final String name,
                                 final Type type,
                                 final String comment,
                                 final String extraInfo,
-                                final boolean hidden,
-                                final String displayName) {
+                                final boolean hidden) {
         super(name, type, comment, extraInfo, hidden);
         this.index = index;
     }
@@ -54,16 +52,14 @@ public class MantaPartitionColumn extends MantaColumn {
      * @param comment comment about column
      * @param extraInfo additional information about column (eg JSON data type)
      * @param hidden flag indicating that column is hidden
-     * @param displayName string to use in table as presented to the user
      */
     @JsonCreator
     public MantaPartitionColumn(@JsonProperty("index") final int index,
                                 @JsonProperty("name") final String name,
                                 @JsonProperty("type") final String typeString,
                                 @JsonProperty("comment") final String comment,
-                                @JsonProperty("extraInfo") final String extraInfo,
-                                @JsonProperty("hidden") final boolean hidden,
-                                @JsonProperty("displayName") final String displayName) {
+                                @JsonProperty("format") final String extraInfo,
+                                @JsonProperty("hidden") final boolean hidden) {
         super(name, typeString, comment, extraInfo, hidden);
         this.index = index;
     }
@@ -71,6 +67,12 @@ public class MantaPartitionColumn extends MantaColumn {
     @JsonProperty
     public int getIndex() {
         return index;
+    }
+
+    @JsonProperty("format")
+    @Override
+    public String getExtraInfo() {
+        return super.getExtraInfo();
     }
 
     @Override
