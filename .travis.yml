@@ -1,0 +1,29 @@
+dist: trusty
+language: java
+# We now cache the Maven dependencies directory for faster builds
+cache:
+  apt: true
+  directories:
+  - $HOME/.m2
+
+matrix:
+  fast_finish: true
+  include:
+    # checkstyle
+    - jdk: oraclejdk8
+      env:
+        - DESC="checkstyle"
+        - CMD="mvn clean checkstyle:check"
+        - LANG=en_US.utf8
+    # unit tests (oraclejdk8)
+    - jdk: oraclejdk8
+      env:
+        - DESC="oraclejdk8 unit tests"
+        - CMD="mvn clean test -Dcheckstyle.skip=true"
+        - LANG=en_US.utf8
+    # unit tests (openjdk8)
+    - jdk: openjdk8
+      env:
+        - DESC="openjdk8 unit tests"
+        - CMD="mvn clean test -Dcheckstyle.skip=true"
+        - LANG=en_US.utf8
