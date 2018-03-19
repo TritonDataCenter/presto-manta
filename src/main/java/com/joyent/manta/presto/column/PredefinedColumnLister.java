@@ -35,10 +35,10 @@ public class PredefinedColumnLister implements ColumnLister {
         Objects.requireNonNull(table, "Table is null");
         Objects.requireNonNull(table.getColumns(),
                 "Table column configuration is null");
-        Validate.isTrue(table.getColumns().isPresent(),
+        Validate.notNull(table.getColumns(),
                 "Table column configuration must be specified in "
                         + "order to use predefined lister");
 
-        return table.getColumns().get();
+        return table.getColumns();
     }
 }

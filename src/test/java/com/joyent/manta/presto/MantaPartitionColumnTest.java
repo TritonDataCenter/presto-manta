@@ -30,11 +30,12 @@ public class MantaPartitionColumnTest {
     public void canSerializeToAndFromJsonWithVarCharType() throws IOException {
         ObjectMapper mapper = injector.getInstance(ObjectMapper.class);
         MantaPartitionColumn column = new MantaPartitionColumn(0, "test",
-                VarcharType.VARCHAR, "test", "extra info", true, "displayName");
+                VarcharType.VARCHAR, "test", "extra info", true);
         String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(column);
 
         Assert.assertNotNull(json);
 
-        MantaPartitionColumn columnDeserialized = mapper.readValue(json, MantaPartitionColumn.class);Assert.assertEquals(column, columnDeserialized);
+        MantaPartitionColumn columnDeserialized = mapper.readValue(json, MantaPartitionColumn.class);
+        Assert.assertEquals(column, columnDeserialized);
     }
 }

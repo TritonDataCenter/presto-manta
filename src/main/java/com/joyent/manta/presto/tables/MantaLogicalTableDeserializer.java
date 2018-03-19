@@ -39,7 +39,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -110,10 +109,10 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             throw new JsonMappingException(p, msg, e);
         }
 
-        final Optional<MantaLogicalTablePartitionDefinition> partitionDefinition =
+        final MantaLogicalTablePartitionDefinition partitionDefinition =
                 readPartitionDefinition(objectNode, p);
 
-        final Optional<List<MantaColumn>> columnConfig = readColumnsArray(objectNode.get("columns"), p);
+        final List<MantaColumn> columnConfig = readColumnsArray(objectNode.get("columns"), p);
 
         try {
             return new MantaLogicalTable(name, rootPath, dataFileType,
@@ -127,7 +126,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
     /**
      * Reads the partition section of a table logical definition object.
      */
-    private static Optional<MantaLogicalTablePartitionDefinition> readPartitionDefinition(
+    private static MantaLogicalTablePartitionDefinition readPartitionDefinition(
             final ObjectNode objectNode, final JsonParser p) throws JsonProcessingException {
         if (objectNode.get("partitioning") != null && !objectNode.get("partitioning").isNull()) {
             if (!objectNode.get("partitioning").isObject()) {
@@ -169,14 +168,14 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
              * no partition specified. */
             if (directoryFilterRegex == null && filterRegex == null
                     && directoryFilterPartitions.isEmpty() && fileFilterPartitions.isEmpty()) {
-                return Optional.empty();
+                return null;
             } else {
-                return Optional.of(new MantaLogicalTablePartitionDefinition(
+                return new MantaLogicalTablePartitionDefinition(
                         directoryFilterRegex, filterRegex, directoryFilterPartitions,
-                        fileFilterPartitions));
+                        fileFilterPartitions);
             }
         } else {
-            return Optional.empty();
+            return null;
         }
     }
 
@@ -284,12 +283,12 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      *
      * @throws JsonMappingException thrown when the JSON file contains invalid values
      */
-    @Nonnull
-    private static Optional<List<MantaColumn>> readColumnsArray(
+    @Nullable
+    private static List<MantaColumn> readColumnsArray(
             final JsonNode columnConfig, final JsonParser p)
             throws JsonProcessingException {
 
-        final Optional<List<MantaColumn>> optionalColumnList;
+        final List<MantaColumn> columnList;
 
         /*
          *  If this 'columns' field is not present in the .json, or empty just
@@ -314,7 +313,6 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 final ObjectNode objectNode = (ObjectNode)element;
 
                 final String name = readColumnName(objectNode, p);
-                final String displayName = readDisplayName(objectNode, p);
                 final Type type = readType(objectNode, p);
                 final String extraInfo = readFormat(objectNode, p, type);
 
@@ -323,12 +321,12 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 columnBuilder.add(column);
             }
 
-            optionalColumnList = Optional.of(columnBuilder.build());
+            columnList = columnBuilder.build();
         } else {
-            optionalColumnList = Optional.empty();
+            columnList = null;
         }
 
-        return optionalColumnList;
+        return columnList;
     }
 
     /**
@@ -342,61 +340,22 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
      */
     private static String readColumnName(final ObjectNode element, final JsonParser p)
             throws JsonMappingException {
-        final JsonNode name = element.get("column");
+        final JsonNode name = element.get("name");
 
         if (name == null || name.isNull()) {
-            String msg = String.format("Expected JSON element [column] "
-                    + "to not be null.");
+            String msg = "Expected JSON element [name] to not be null.";
             throw new JsonMappingException(p, msg);
         }
 
         if (!name.isTextual()) {
-            String msg = String.format("Expected JSON [column] element "
-                    + "to be a string.");
+            String msg = "Expected JSON [name] element to be a string.";
             throw new JsonMappingException(p, msg);
         }
 
         final String text = name.asText();
 
         if (StringUtils.isBlank(text)) {
-            String msg = String.format("Expected JSON [column] element "
-                    + "to not be blank.");
-            throw new JsonMappingException(p, msg);
-        }
-
-        return text;
-    }
-
-
-    /**
-     * Reads the display name of a column from a JSON element.
-     *
-     * @param element element to read from
-     * @param p json parser to embed in error messages
-     * @return the display name as a string
-     *
-     * @throws JsonMappingException thrown when the JSON file contains invalid values
-     */
-    @Nullable
-    private static String readDisplayName(final ObjectNode element, final JsonParser p)
-            throws JsonMappingException {
-        final JsonNode displayName = element.get("displayName");
-
-        if (displayName == null || displayName.isNull()) {
-            return null;
-        }
-
-        if (!displayName.isTextual()) {
-            String msg = String.format("Expected JSON [displayName] element "
-                    + "to be a string.");
-            throw new JsonMappingException(p, msg);
-        }
-
-        final String text = displayName.asText();
-
-        if (StringUtils.isBlank(text)) {
-            String msg = String.format("Expected JSON [displayName] element "
-                    + "to not be blank.");
+            String msg = "Expected JSON [name] element to not be blank.";
             throw new JsonMappingException(p, msg);
         }
 
@@ -482,8 +441,19 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             return null;
         }
 
+        final String afterTypeSignature = StringUtils.substringAfter(formatText,
+                "[" + type.getTypeSignature() + "] ");
+
         if (type.equals(TimestampType.TIMESTAMP) || type.equals(DateType.DATE)) {
-            switch (formatText) {
+            final String pattern;
+
+            if (StringUtils.isBlank(afterTypeSignature)) {
+                pattern = formatText;
+            } else {
+                pattern = afterTypeSignature;
+            }
+
+            switch (pattern) {
                 case "iso-8601":
                 case "epoch-milliseconds":
                 case "epoch-seconds":
@@ -491,10 +461,10 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                     break;
                 default:
                     try {
-                        DateTimeFormatter.ofPattern(formatText);
+                        DateTimeFormatter.ofPattern(pattern);
                     } catch (IllegalArgumentException e) {
                         String msg = String.format("The specified format was an invalid"
-                                + "date time format: %s", formatText);
+                                + " date time format: %s", formatText);
                         throw new JsonMappingException(p, msg, e);
                     }
             }
@@ -502,6 +472,10 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
             String msg = String.format("The type specified doesn't support format configuration: "
                     + "%s", type);
             throw new JsonMappingException(p, msg);
+        }
+
+        if (StringUtils.isNotBlank(afterTypeSignature)) {
+            return formatText;
         }
 
         return String.format("[%s] %s", type.getTypeSignature().toString(),

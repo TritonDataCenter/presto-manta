@@ -61,12 +61,13 @@ public class MantaSplitManager implements ConnectorSplitManager {
     }
 
     @Override
-    public ConnectorSplitSource getSplits(final ConnectorTransactionHandle handle,
+    public ConnectorSplitSource getSplits(final ConnectorTransactionHandle transactionHandle,
                                           final ConnectorSession session,
-                                          final ConnectorTableLayoutHandle layout) {
+                                          final ConnectorTableLayoutHandle layout,
+                                          final SplitSchedulingStrategy splitSchedulingStrategy) {
         if (!layout.getClass().equals(MantaTableLayoutHandle.class)) {
             throw new MantaPrestoUnexpectedClass(MantaTableLayoutHandle.class,
-                    handle.getClass());
+                    transactionHandle.getClass());
         }
 
         final MantaTableLayoutHandle layoutHandle = (MantaTableLayoutHandle)layout;
@@ -78,9 +79,9 @@ public class MantaSplitManager implements ConnectorSplitManager {
         final MantaSplitPartitionPredicate dirPartitionPredicate;
 
         if (predicate != null && predicate.getDomains().isPresent()
-                && table.getPartitionDefinition().isPresent()) {
+                && table.getPartitionDefinition() != null) {
             final Map<ColumnHandle, Domain> domains = predicate.getDomains().get();
-            final MantaLogicalTablePartitionDefinition partitionDefinition = table.getPartitionDefinition().get();
+            final MantaLogicalTablePartitionDefinition partitionDefinition = table.getPartitionDefinition();
 
             filePartitionPredicate = createPartitionPredicate(
                     partitionDefinition.getFilterRegex(),

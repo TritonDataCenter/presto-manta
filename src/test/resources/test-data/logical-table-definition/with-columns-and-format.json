@@ -3,14 +3,14 @@
   "rootPath": "/user/stor/json-examples",
   "dataFileType": "NDJSON",
   "columns":[
-    {"column":"name","type":"string"},
-    {"column":"timestamp-iso8601","type":"timestamp","format":"iso-8601"},
-    {"column":"timestamp-epoch-seconds","type":"timestamp","format":"epoch-seconds"},
-    {"column":"timestamp-epoch-milliseconds","type":"timestamp","format":"epoch-milliseconds"},
-    {"column":"timestamp-epoch-days","type":"timestamp","format":"epoch-days"},
-    {"column":"timestamp-default","type":"timestamp"},
-    {"column":"date","type":"date","format":"yyyy-MM-dd"},
-    {"column":"count","type":"int"},
-    {"column":"properties","type":"json"}
+    {"name":"name","type":"string"},
+    {"name":"timestamp-iso8601","type":"timestamp","format":"iso-8601"},
+    {"name":"timestamp-epoch-seconds","type":"timestamp","format":"epoch-seconds"},
+    {"name":"timestamp-epoch-milliseconds","type":"timestamp","format":"epoch-milliseconds"},
+    {"name":"timestamp-epoch-days","type":"timestamp","format":"epoch-days"},
+    {"name":"timestamp-default","type":"timestamp"},
+    {"name":"date","type":"date","format":"yyyy-MM-dd"},
+    {"name":"count","type":"int"},
+    {"name":"properties","type":"json"}
   ]
 }

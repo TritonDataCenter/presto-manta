@@ -9,18 +9,22 @@ package com.joyent.manta.presto.test;
 
 import com.facebook.presto.Session;
 import com.facebook.presto.plugin.memory.MemoryPlugin;
+import com.facebook.presto.spi.type.Type;
 import com.facebook.presto.testing.MaterializedResult;
 import com.facebook.presto.tests.DistributedQueryRunner;
 import com.facebook.presto.tpch.TpchPlugin;
 import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableList;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPlugin;
+import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.compression.MantaCompressionType;
 import com.joyent.manta.presto.tables.MantaLogicalTable;
 import com.joyent.manta.presto.tables.MantaLogicalTableProvider;
+import io.airlift.tpch.TpchColumn;
 import io.airlift.tpch.TpchTable;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
@@ -142,8 +146,18 @@ public class MantaQueryRunner {
             LOG.info("Pushing table [{}] temp file to Manta path [{}]", tableName,
                     dataFilePath);
 
+            final List<Type> types = result.getTypes();
+
+            final ImmutableList.Builder<MantaColumn> mantaColumns = new ImmutableList.Builder<>();
+
+            int index = 0;
+            for (TpchColumn<?> c : table.getColumns()) {
+                final Type type = types.get(index++);
+                mantaColumns.add(new MantaColumn(c.getSimplifiedColumnName(), type, null));
+            }
+
             tablesDefinition.add(new MantaLogicalTable(tableName,
-                    rootPath, dataFileType));
+                    rootPath, dataFileType, null, mantaColumns.build()));
         }
 
         final String tableDefinitionJsonPath = String.format(testPathPrefix + "%s",

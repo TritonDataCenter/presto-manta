@@ -68,7 +68,7 @@ public class RedirectingColumnLister implements ColumnLister {
 
         /* We route to the columns that are predefined regardless of the
          * data type. */
-        if (table.getColumns() != null && table.getColumns().isPresent()) {
+        if (table.getColumns() != null) {
             columns = predefinedLister.listColumns(tableName, table, session);
         } else {
             final MantaDataFileType type = table.getDataFileType();
@@ -93,7 +93,7 @@ public class RedirectingColumnLister implements ColumnLister {
             columns = lister.listColumns(tableName, table, session);
         }
 
-        if (!table.getPartitionDefinition().isPresent()) {
+        if (table.getPartitionDefinition() == null) {
             return columns;
         }
 
@@ -101,7 +101,7 @@ public class RedirectingColumnLister implements ColumnLister {
                 new ImmutableList.Builder<>();
 
         final MantaLogicalTablePartitionDefinition partitionDefinition =
-                table.getPartitionDefinition().get();
+                table.getPartitionDefinition();
 
         withPartitionColumns.addAll(columns);
         withPartitionColumns.addAll(partitionDefinition.directoryPartitionsAsColumns());
