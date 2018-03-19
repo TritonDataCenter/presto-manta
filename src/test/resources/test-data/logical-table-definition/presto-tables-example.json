@@ -1,0 +1,142 @@
+[
+  /* This is an example of a simple table that will try to dynamically guess
+     column types. */
+  {
+    // NDJSON - new line delimited JSON
+    "dataFileType": "NDJSON",
+    // File filter regex that will ensure that only *.log files are queried
+    "filterRegex": "^.*\\.log",
+    // Directory filter regex that will allow you to filter directories.
+    // This is useful because it will allow you to reduce the search space
+    // earlier than a file filter.
+    "directoryFilterRegex": "",
+    // Path that will be recursively searched for data files
+    "rootPath": "~~/stor/presto/json-examples",
+    // Unique name of table
+    "name": "json-examples-1"
+  },
+
+  /* This is an example of a table with a hardcoded-data format (Telegraf JSON).
+     The columns in this table are predefined. */
+  {
+    // TELEGRAF_NDJSON - Telegraf format JSON file
+    "dataFileType": "TELEGRAF_NDJSON",
+    // File filter regex that will ensure that only *.log files are queried
+    "filterRegex": "^.*\\.log",
+    // Directory filter regex that will allow you to filter directories.
+    // This is useful because it will allow you to reduce the search space
+    // earlier than a file filter.
+    "directoryFilterRegex": "",
+    // Path that will be recursively searched for data files
+    "rootPath": "~~/stor/presto/json-examples",
+    // Unique name of table
+    "name": "json-examples-2"
+  },
+
+  /* This is an example of a table with explicitly defined columns.
+     The columns in this table are defined below. */
+  {
+    // NDJSON - new line delimited JSON
+    "dataFileType": "NDJSON",
+    // File filter regex that will ensure that only *.log files are queried
+    "filterRegex": "^.*\\.log",
+    // Directory filter regex that will allow you to filter directories.
+    // This is useful because it will allow you to reduce the search space
+    // earlier than a file filter.
+    "directoryFilterRegex": "",
+    // Path that will be recursively searched for data files
+    "rootPath": "~~/stor/presto/json-examples",
+    // Unique name of table
+    "name": "json-examples-3",
+
+    // Column definition
+    "columns": [
+      {
+        // Name of column to read from JSON object
+        "name": "name",
+        // Presto compatibile data type name
+        "type": "varchar"
+      },
+      {
+        "name": "timestamp",
+        "type": "timestamp",
+        // Format can be used to specify specific data formats the type should
+        // be read from
+        "format": "epoch-seconds"
+      },
+      {
+        "name": "count",
+        "type": "int"
+      },
+      {
+        // Freeform JSON objects are also supported
+        "type": "json",
+        "name": "properties"
+      }
+    ]
+  },
+
+  /* This is an example of a table with file and server partitioning. */
+  {
+    // NDJSON - new line delimited JSON
+    "dataFileType": "NDJSON",
+    // File filter regex that will ensure that only *.log files are queried
+    "filterRegex": "^.*\\.log",
+    // Directory filter regex that will allow you to filter directories.
+    // This is useful because it will allow you to reduce the search space
+    // earlier than a file filter.
+    "directoryFilterRegex": "",
+    // Path that will be recursively searched for data files
+    "rootPath": "~~/stor/presto/json-examples",
+    // Unique name of table
+    "name": "json-examples-4",
+
+    // Column definition
+    "columns": [
+      {
+        // Name of column to read from JSON object
+        "name": "name",
+        // Presto compatibile data type name
+        "type": "varchar"
+      },
+      {
+        "name": "timestamp",
+        "type": "timestamp",
+        // Format can be used to specify specific data formats the type should
+        // be read from
+        "format": "epoch-seconds"
+      },
+      {
+        "name": "count",
+        "type": "int"
+      },
+      {
+        // Freeform JSON objects are also supported
+        "type": "json",
+        "name": "properties"
+      }
+    ],
+    // Parititioning on file names or directory directory names can be enabled
+    // such that each partition is presented as a column in which you can
+    // do WHERE operations upon.
+    "partitioning": {
+      // File partitions are specified as a regex with each group being a partition.
+      "filterRegex": "^/user/stor/json-examples/.+/(.+)-(.+)-(.+)-.+\\.log$",
+      // Here you define the name of the partition. Each item corresponds to
+      // a group within the regex in the order of appearence from left to right.
+      "partitions": [
+        "year",
+        "month",
+        "day"
+      ],
+      // Directory partitions are specified as a regex with each group being a partition.
+      // They are useful because they can quickly reduce the overall search space.
+      "directoryFilterRegex": "^/user/stor/json-examples/(.+)/.+\\.log$",
+      // Like file partitions directory partition names are defined such that
+      // each partition name corresponds to a single partition group
+      "directoryPartitions": [
+        "server"
+      ]
+    }
+  }
+]

@@ -8,23 +8,22 @@
 package com.joyent.manta.presto.tables;
 
 import com.facebook.presto.spi.SchemaTableName;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.joyent.manta.client.MantaClient;
-import com.joyent.manta.client.MantaObjectInputStream;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoTableNotFoundException;
 import com.joyent.manta.util.MantaUtils;
+import org.apache.commons.lang3.Validate;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -69,24 +68,22 @@ public class MantaLogicalTableProvider {
     private final MantaClient mantaClient;
 
     /**
-     * {@link Callable} implementation that allows for the asynchronous reading
-     * and parsing of a <code>presto-tables.json</code> file.
+     * Manta implementation of a table definition loader that allows for
+     * loading table definition files from a remote Manta path.
      */
-    private final class TableDefinitionLoader implements Callable<Map<String, MantaLogicalTable>> {
-        private final String pathToDefinition;
+    private final class MantaTableDefinitionLoader extends TableDefinitionLoader {
+        private final String tableDefinitionPath;
 
-        TableDefinitionLoader(final String pathToDefinition) {
-            this.pathToDefinition = pathToDefinition;
+        private MantaTableDefinitionLoader(final ObjectMapper objectMapper,
+                                           final String tableDefinitionPath) {
+            super(objectMapper);
+            this.tableDefinitionPath = Validate.notBlank(tableDefinitionPath,
+                    "Path to table definition file is blank");
         }
 
         @Override
-        public Map<String, MantaLogicalTable> call() throws Exception {
-            try (MantaObjectInputStream in = mantaClient.getAsInputStream(pathToDefinition)) {
-                TypeReference type = new TypeReference<Set<MantaLogicalTable>>() { };
-                Set<MantaLogicalTable> tables = objectMapper.readValue(in, type);
-
-                return tables.stream().collect(Collectors.toMap(MantaLogicalTable::getTableName, item -> item));
-            }
+        InputStream openStream() throws IOException {
+            return mantaClient.getAsInputStream(tableDefinitionPath);
         }
     }
 
@@ -136,8 +133,14 @@ public class MantaLogicalTableProvider {
      * @throws MantaPrestoSchemaNotFoundException when no mapping can be found for schema
      */
     public Map<String, MantaLogicalTable> tablesForSchema(final String schemaName) {
+        /* Internally, we use a URI data structure to represent the path to
+         * a table definition file, so that we can have flexibility when testing
+         * to allow for the table definition to happen from outside of Manta
+         * itself. */
+
         final String pathToDefinition = pathToTableDefinition(schemaName);
-        final TableDefinitionLoader loader = new TableDefinitionLoader(pathToDefinition);
+        final MantaTableDefinitionLoader loader = new MantaTableDefinitionLoader(
+                objectMapper, pathToDefinition);
 
         try {
             return tableListCache.get(schemaName, loader);
@@ -149,7 +152,7 @@ public class MantaLogicalTableProvider {
             MantaPrestoSchemaNotFoundException me = new MantaPrestoSchemaNotFoundException(
                     schemaName, msg, cause);
             me.setContextValue("schemaName", schemaName);
-            me.setContextValue("pathToDefinition", pathToDefinition);
+            me.setContextValue("tableDefinitionURL", pathToDefinition);
             me.setContextValue("causeMessage", cause.getMessage());
 
             throw me;

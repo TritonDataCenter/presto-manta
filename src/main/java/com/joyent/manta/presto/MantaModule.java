@@ -195,9 +195,7 @@ public class MantaModule implements Module {
 
         binder.requestStaticInjection(TypeUtils.class);
 
-        /* We use a custom deserializer in order to provide more informative errors
-         * and flexible parsing to users who are manually writing presto-tables.json
-         * files. */
+
         jsonBinder(binder).addDeserializerBinding(MantaLogicalTable.class)
                 .to(MantaLogicalTableDeserializer.class).in(Scopes.SINGLETON);
     }
