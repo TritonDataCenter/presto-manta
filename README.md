@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/joyent/presto-manta.svg?branch=master)](https://travis-ci.org/joyent/presto-manta)
+
 # Presto Manta Connector
 
 This is a PrestoDB connector that allows you to query unstructured data from 
