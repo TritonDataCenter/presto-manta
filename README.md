@@ -73,9 +73,13 @@ path.
  * [BZIP2 with the file extension `.bz2`](https://en.wikipedia.org/wiki/Bzip2)
  * [LZ4 with the file extension `.lz4`](https://en.wikipedia.org/wiki/LZ4_(compression_algorithm))
  * [GZIP with the file extension `.gz`](https://en.wikipedia.org/wiki/Gzip)
- * [SNAPPY with the file extension `.sz`](https://en.wikipedia.org/wiki/Snappy_(compression))
+ * [Xerial SNAPPY with the file extension `.xsnappy`](https://github.com/xerial/snappy-java)
+ * [Hadoop SNAPPY with the file extension `.snappy`](https://en.wikipedia.org/wiki/Snappy_(compression))
  * [XZ with the file extension `.xz`](https://en.wikipedia.org/wiki/Xz)   
 
+The Hadoop Snappy native libraries can optionally be loaded in order to get
+better performance with files that have been compressed in the Hadoop-specific
+Snappy format.
 
 ### Known Issues and Limitations
 
