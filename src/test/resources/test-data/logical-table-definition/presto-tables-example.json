@@ -97,7 +97,8 @@
         // Name of column to read from JSON object
         "name": "name",
         // Presto compatibile data type name
-        "type": "varchar"
+        "type": "varchar",
+        "comment":"Metric Recorded"
       },
       {
         "name": "timestamp",
@@ -112,8 +113,14 @@
       },
       {
         // Freeform JSON objects are also supported
-        "type": "json",
-        "name": "properties"
+        "name": "properties",
+        "type": "json"
+      },
+      {
+        "name": "user",
+        "type": "varchar",
+        // Hidden columns are also supported
+        "hidden": true
       }
     ],
     // Parititioning on file names or directory directory names can be enabled

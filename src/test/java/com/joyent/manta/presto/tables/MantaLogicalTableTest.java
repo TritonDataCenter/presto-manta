@@ -243,7 +243,7 @@ public class MantaLogicalTableTest {
                 new MantaColumn("timestamp-default", TimestampType.TIMESTAMP, null),
                 new MantaColumn("date", DateType.DATE, null, "[date] yyyy-MM-dd", false),
                 new MantaColumn("count", IntegerType.INTEGER, null),
-                new MantaColumn("properties", JsonType.JSON, null)
+                new MantaColumn("properties", JsonType.JSON, "Free form JSON data", null, true)
         );
 
         final MantaLogicalTable expected = new MantaLogicalTable(

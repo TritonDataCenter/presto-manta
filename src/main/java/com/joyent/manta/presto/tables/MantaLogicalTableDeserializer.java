@@ -27,6 +27,7 @@ import com.joyent.manta.presto.MantaDataFileType;
 import com.joyent.manta.presto.MantaPrestoUtils;
 import com.joyent.manta.presto.column.MantaColumn;
 import com.joyent.manta.presto.types.TypeUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -315,9 +316,11 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
                 final String name = readColumnName(objectNode, p);
                 final Type type = readType(objectNode, p);
                 final String extraInfo = readFormat(objectNode, p, type);
+                final String comment = readComment(objectNode, p);
+                final boolean hidden = readHidden(objectNode, p);
 
-                MantaColumn column = new MantaColumn(
-                        name, type, null, extraInfo, false);
+                final MantaColumn column = new MantaColumn(
+                        name, type, comment, extraInfo, hidden);
                 columnBuilder.add(column);
             }
 
@@ -480,5 +483,68 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
         return String.format("[%s] %s", type.getTypeSignature().toString(),
                 formatText);
+    }
+
+    /**
+     * Reads the optional comment from a JSON element for use in the
+     * comment portion of a {@link MantaColumn}'s metadata.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     *
+     * @return null if not specified, otherwise, the comment describing the column
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
+    private static String readComment(final ObjectNode element, final JsonParser p)
+            throws JsonMappingException {
+        final JsonNode node = element.get("comment");
+
+        if (node == null || node.isNull()) {
+            return null;
+        }
+
+        if (!node.isTextual()) {
+            String msg = "Expected JSON element [comment] to be a string";
+            throw new JsonMappingException(p, msg);
+        }
+
+        final String comment = node.asText();
+
+        if (StringUtils.isBlank(comment)) {
+            return null;
+        }
+
+        return comment;
+    }
+
+    /**
+     * Reads the optional flag indicating if a column is hidden from a JSON
+     * element for use in a {@link MantaColumn}.
+     *
+     * @param element element to read from
+     * @param p json parser to embed in error messages
+     *
+     * @return false if element is null/blank, otherwise, boolean representation
+     * @throws JsonMappingException thrown when the JSON file contains invalid values
+     */
+    private static boolean readHidden(final ObjectNode element, final JsonParser p)
+            throws JsonMappingException {
+
+        final boolean defaultValue = false;
+        final JsonNode node = element.get("hidden");
+
+        if (node == null || node.isNull()) {
+            return defaultValue;
+        }
+
+        if (node.isBoolean()) {
+            return node.asBoolean(defaultValue);
+        } else if (node.isTextual()) {
+            final String value = node.textValue();
+            return BooleanUtils.toBoolean(value);
+        } else {
+            String msg = "Expected JSON element [hidden] to be a boolean or string";
+            throw new JsonMappingException(p, msg);
+        }
     }
 }
