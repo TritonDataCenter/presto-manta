@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Joiner;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.inject.Binder;
 import com.joyent.manta.client.MantaClient;
 import com.joyent.manta.presto.exceptions.MantaPrestoSchemaNotFoundException;
 import com.joyent.manta.presto.exceptions.MantaPrestoTableNotFoundException;
@@ -88,7 +89,9 @@ public class MantaLogicalTableProvider {
     }
 
     /**
-     * Creates a new instance based on the passed parameters.
+     * <p>Creates a new instance based on the passed parameters.</p>
+     * <p>Note: Each {@link ObjectMapper} instance injected is a new instance
+     * and can be safely reconfigured. See: {@link io.airlift.json.JsonModule#configure(Binder)}</p>
      *
      * @param schemaMapping mapping of schema name to directory path
      * @param objectMapper Jackson JSON serializer / deserializer.
