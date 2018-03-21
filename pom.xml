@@ -62,18 +62,18 @@
         <failsafe.forkCount>1</failsafe.forkCount>
         <failsafe.useSystemClassLoader>true</failsafe.useSystemClassLoader>
         <!-- Dependency versions -->
-        <dependency.checkstyle.version>8.2</dependency.checkstyle.version>
+        <dependency.checkstyle.version>8.8</dependency.checkstyle.version>
         <dependency.java-manta.version>3.2.1</dependency.java-manta.version>
         <dependency.presto.version>0.196</dependency.presto.version>
-        <dependency.commons-compress.version>1.14</dependency.commons-compress.version>
-        <dependency.xz-version>1.6</dependency.xz-version>
-        <dependency.snappy-version>1.1.1.7</dependency.snappy-version>
-        <dependency.guava.version>23.0</dependency.guava.version>
-        <dependency.commons-lang>3.6</dependency.commons-lang>
-        <dependency.slfj.version>1.7.21</dependency.slfj.version>
-        <dependency.airlift.version>0.148</dependency.airlift.version>
-        <dependency.testng.version>6.9.9</dependency.testng.version>
-        <dependency.mockito.version>2.0.2-beta</dependency.mockito.version>
+        <dependency.commons-compress.version>1.16.1</dependency.commons-compress.version>
+        <dependency.xz-version>1.8</dependency.xz-version>
+        <dependency.snappy-version>1.1.7.1</dependency.snappy-version>
+        <dependency.guava.version>24.1-jre</dependency.guava.version>
+        <dependency.commons-lang>3.7</dependency.commons-lang>
+        <dependency.slfj.version>1.7.25</dependency.slfj.version>
+        <dependency.airlift.version>0.163</dependency.airlift.version>
+        <dependency.testng.version>6.11</dependency.testng.version>
+        <dependency.mockito.version>2.16.0</dependency.mockito.version>
         <dependency.unitils.version>3.4.6</dependency.unitils.version>
 
         <!-- Plugin versions -->
@@ -84,7 +84,7 @@
         <maven-dependency-plugin.version>3.0.0</maven-dependency-plugin.version>
         <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
         <maven-enforcer-plugin.version>1.4.1</maven-enforcer-plugin.version>
-        <maven-extra-enforcer-rules.version>1.0-beta-6</maven-extra-enforcer-rules.version>
+        <maven-extra-enforcer-rules.version>1.0-beta-7</maven-extra-enforcer-rules.version>
         <maven-failsafe-plugin.version>2.19</maven-failsafe-plugin.version>
         <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
         <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
@@ -99,6 +99,38 @@
     </properties>
 
     <dependencies>
+        <!-- These dependencies are directly provided by Presto's classloader -->
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-spi</artifactId>
+            <version>${dependency.presto.version}</version>
+            <optional>true</optional>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-main</artifactId>
+            <version>${dependency.presto.version}</version>
+            <optional>true</optional>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- These dependencies are loaded via the plugin's classloader and
+             can diverge from the versions in Presto's lib directory -->
+
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>json</artifactId>
+            <version>${dependency.airlift.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>bootstrap</artifactId>
+            <version>${dependency.airlift.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.joyent.manta</groupId>
             <artifactId>java-manta-client</artifactId>
@@ -112,35 +144,21 @@
         </dependency>
 
         <dependency>
-            <groupId>com.facebook.presto</groupId>
-            <artifactId>presto-spi</artifactId>
-            <version>${dependency.presto.version}</version>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.presto</groupId>
-            <artifactId>presto-main</artifactId>
-            <version>${dependency.presto.version}</version>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
             <version>${dependency.commons-compress.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${dependency.guava.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${dependency.commons-lang}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${dependency.guava.version}</version>
         </dependency>
 
         <dependency>
@@ -153,20 +171,6 @@
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
             <version>${dependency.snappy-version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>bootstrap</artifactId>
-            <version>${dependency.airlift.version}</version>
-            <optional>true</optional>
-        </dependency>
-
-        <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>json</artifactId>
-            <version>${dependency.airlift.version}</version>
-            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -193,9 +197,15 @@
 
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <artifactId>mockito-core</artifactId>
             <version>${dependency.mockito.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.objenesis</groupId>
+                    <artifactId>objenesis</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
