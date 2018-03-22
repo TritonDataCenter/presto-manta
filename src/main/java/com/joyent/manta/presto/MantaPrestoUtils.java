@@ -66,7 +66,7 @@ public final class MantaPrestoUtils {
      * @param homeDir home directory to replace ~~ with
      * @return interpolate path
      */
-    public static String substitudeHomeDirectory(final String path, final String homeDir) {
+    public static String substituteHomeDirectory(final String path, final String homeDir) {
         requireNonNull(path, "Path is null");
         requireNonNull(homeDir, "Home directory is null");
 

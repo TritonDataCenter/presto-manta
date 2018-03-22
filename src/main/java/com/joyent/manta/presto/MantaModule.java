@@ -120,7 +120,7 @@ public class MantaModule implements Module {
             }
 
             if (StringUtils.isNotBlank(parts[2]) && StringUtils.isNotBlank(val)) {
-                final String path = MantaPrestoUtils.substitudeHomeDirectory(val, homeDir);
+                final String path = MantaPrestoUtils.substituteHomeDirectory(val, homeDir);
                 mapToUpdate.put(parts[2], path);
             }
         }

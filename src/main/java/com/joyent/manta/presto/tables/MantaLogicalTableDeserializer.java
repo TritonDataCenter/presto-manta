@@ -95,7 +95,7 @@ public class MantaLogicalTableDeserializer extends JsonDeserializer<MantaLogical
 
         final String name = readRequiredString(objectNode.get("name"), "name", p);
 
-        final String rootPath = MantaPrestoUtils.substitudeHomeDirectory(
+        final String rootPath = MantaPrestoUtils.substituteHomeDirectory(
                 readRequiredString(objectNode.get("rootPath"), "rootPath", p),
                 config.getMantaHomeDirectory());
 
