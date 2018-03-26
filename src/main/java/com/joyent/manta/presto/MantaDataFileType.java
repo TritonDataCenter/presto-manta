@@ -10,11 +10,6 @@ package com.joyent.manta.presto;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.Files;
-import com.joyent.manta.client.MantaObject;
-import com.joyent.manta.presto.exceptions.MantaPrestoExceptionUtils;
-import com.joyent.manta.presto.exceptions.MantaPrestoIllegalArgumentException;
-import org.apache.commons.lang3.ObjectUtils;
 
 import java.util.Map;
 
