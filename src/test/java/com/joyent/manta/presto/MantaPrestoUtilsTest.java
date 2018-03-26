@@ -8,13 +8,6 @@ import java.nio.charset.StandardCharsets;
 
 @Test
 public class MantaPrestoUtilsTest {
-    public void canExtractMediaTypeFromContentType() {
-        final String contentType = "text/plain; charset=\"UTF-8\"";
-        final String mediaType = MantaPrestoUtils.extractMediaTypeFromContentType(contentType);
-        Assert.assertEquals("text/plain", mediaType,
-                "Unable to extract media type");
-    }
-
     public void canExtractCharsetFromContentType() {
         final String contentType = "text/plain; charset=\"UTF-8\"";
         final Charset charset = MantaPrestoUtils.parseCharset(contentType,

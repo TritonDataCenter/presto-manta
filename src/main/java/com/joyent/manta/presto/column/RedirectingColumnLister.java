@@ -68,7 +68,7 @@ public class RedirectingColumnLister implements ColumnLister {
 
         /* We route to the columns that are predefined regardless of the
          * data type. */
-        if (table.getColumns() != null) {
+        if (table.getColumns() != null && !table.getColumns().isEmpty()) {
             columns = predefinedLister.listColumns(tableName, table, session);
         } else {
             final MantaDataFileType type = table.getDataFileType();

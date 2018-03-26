@@ -37,6 +37,7 @@ import java.io.InputStream;
  * with 'block-based' based compression algorithms, as opposed to
  * 'stream-based' compression algorithms.
  */
+@SuppressWarnings("ALL")
 public class BlockDecompressorStream extends DecompressorStream {
     public static final Logger LOG = LoggerFactory.getLogger(BlockDecompressorStream.class);
     private static final int _100MB = 100 * 1024 * 1024;

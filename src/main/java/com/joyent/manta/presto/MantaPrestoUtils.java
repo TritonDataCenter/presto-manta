@@ -29,17 +29,6 @@ public final class MantaPrestoUtils {
     }
 
     /**
-     * Extracts the media type without parameters from a HTTP content type.
-     * @param contentType non-null content type as string
-     * @return media type as string
-     */
-    public static String extractMediaTypeFromContentType(final String contentType) {
-        requireNonNull(contentType, "Content type is null");
-
-        return MediaType.parse(contentType).withoutParameters().toString();
-    }
-
-    /**
      * Extracts the character set from a content type.
      * @param contentType raw input content type to parse
      * @param defaultCharSet default character set to use when none can be parsed

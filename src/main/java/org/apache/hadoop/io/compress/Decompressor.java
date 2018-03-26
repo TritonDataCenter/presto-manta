@@ -25,6 +25,7 @@ import java.io.IOException;
  * This is modelled after {@link java.util.zip.Inflater}
  *
  */
+@SuppressWarnings("ALL")
 public interface Decompressor {
     /**
      * Sets input data for decompression.

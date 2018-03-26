@@ -18,5 +18,5 @@ public enum MantaTransactionHandle implements ConnectorTransactionHandle {
     /**
      * Single global instance.
      */
-    INSTANCE;
+    INSTANCE
 }
