@@ -1,0 +1,9 @@
+private_key_path = "~/.ssh/id_rsa"
+
+manta_user = "account.name"
+manta_key_id = "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff"
+manta_key = <<EOF
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----
+EOF
